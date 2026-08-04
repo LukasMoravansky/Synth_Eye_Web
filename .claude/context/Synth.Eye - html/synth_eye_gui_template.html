@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Synth.Eye — Vision Inspection Console</title>
+
+<!-- ============================================================
+     EDIT ME 1/4 — CAMERA IMAGE PATH
+     The frame shown inside "Camera View" is loaded from disk.
+     Put your capture next to this .html file (or use any relative
+     / absolute path) and change the src below.
+     ============================================================ -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ---------- design tokens ---------- */
+:root{
+  --bg:            #eceded;
+  --card:          #ffffff;
+  --card-border:   #e8e8ea;
+  --ink:           #16181d;
+  --ink-soft:      #3f434b;
+  --ink-mute:      #8a8f98;
+  --line:          #edeef0;
+  --ok:            #16a34a;
+  --nok:           #ef4444;
+  --viewport:      #1e1f21;
+  --viewport-ratio: 3 / 2;   /* height of the image area — lower the 2nd number to make it taller */
+  --radius-card:   18px;
+  --radius-btn:    11px;
+  --shadow:        0 1px 2px rgba(16,18,22,.04), 0 6px 18px rgba(16,18,22,.05);
+  --font:          'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --mono:          'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg);
+  font-family:var(--font);
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  padding:18px;
+}
+
+/* ---------- layout ---------- */
+.app{
+  display:grid;
+  grid-template-columns:minmax(0,47.4fr) minmax(0,52.6fr);
+  grid-template-rows:auto auto;
+  gap:16px;
+  max-width:1620px;
+  margin:0 auto;
+}
+/* row 1: Camera View | System Logger  (same top and bottom edge)
+   row 2: brand + status/stats | Productivity Graph */
+.camera-card{grid-column:1;grid-row:1}
+.logger-card{grid-column:2;grid-row:1}
+.left-bottom{grid-column:1;grid-row:2}
+.graph-card {grid-column:2;grid-row:2}
+
+/* cards that must fill their grid row */
+.logger-card,.graph-card{display:flex;flex-direction:column;min-width:0}
+.left-bottom{
+  display:grid;
+  grid-template-columns:minmax(0,45fr) minmax(0,55fr);
+  gap:16px;
+  align-items:stretch;
+}
+.stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+
+/* ---------- card shell ---------- */
+.card{
+  background:var(--card);
+  border:1px solid var(--card-border);
+  border-radius:var(--radius-card);
+  box-shadow:var(--shadow);
+  padding:16px;
+}
+.card-head{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:2px 2px 14px;
+}
+.card-head h2{
+  margin:0;
+  font-size:21px;
+  font-weight:700;
+  letter-spacing:-.02em;
+}
+.card-head .spacer{flex:1}
+.icon{width:22px;height:22px;flex:none;stroke:var(--ink);stroke-width:1.7;fill:none;
+      stroke-linecap:round;stroke-linejoin:round}
+.icon.sm{width:17px;height:17px;stroke-width:1.8}
+.icon.xs{width:15px;height:15px;stroke-width:1.9}
+
+/* ---------- camera view ---------- */
+.viewport{
+  position:relative;
+  background:var(--viewport);
+  border-radius:6px;
+  aspect-ratio:var(--viewport-ratio);
+  overflow:hidden;
+}
+/* the frame is shown as large as it fits, without cropping.
+   swap to object-fit:cover if you would rather it fill edge to edge. */
+.viewport img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
+}
+.viewport .missing{
+  position:absolute;inset:0;
+  display:none;
+  align-items:center;justify-content:center;
+  color:#6d7278;
+  font-size:12.5px;
+  font-family:var(--mono);
+  text-align:center;
+  padding:0 24px;
+}
+.viewport.no-image img{display:none}
+.viewport.no-image .missing{display:flex}
+
+/* ---------- toolbar ---------- */
+.toolbar{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:12px;
+  padding-top:16px;
+}
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  height:48px;
+  padding:0 6px;
+  border:1px solid #e4e5e7;
+  border-radius:var(--radius-btn);
+  background:#fff;
+  font:inherit;
+  font-size:12.5px;
+  font-weight:600;
+  letter-spacing:.06em;
+  color:var(--ink);
+  cursor:pointer;
+  transition:background .15s, border-color .15s, transform .05s;
+}
+.btn:hover{background:#f7f7f8;border-color:#d8d9dc}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:2px solid #2f7bf6;outline-offset:2px}
+
+/* ---------- brand card (logo image only) ---------- */
+.brand-card{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  min-height:200px;
+}
+.brand-logo{
+  max-width:100%;
+  max-height:100%;
+  object-fit:contain;
+  display:block;
+}
+.brand-card.no-logo{
+  border:1px dashed #d6d7da;
+  color:var(--ink-mute);
+  font-family:var(--mono);
+  font-size:12px;
+  text-align:center;
+}
+.brand-card.no-logo .brand-logo{display:none}
+.brand-card .missing{display:none}
+.brand-card.no-logo .missing{display:block}
+
+/* ---------- key/value rows ---------- */
+.rows{display:flex;flex-direction:column}
+.row{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 2px;
+  border-top:1px solid var(--line);
+  font-size:13.5px;
+}
+.row:first-child{border-top:0}
+.row .k{color:var(--ink-soft)}
+.row .fill{flex:1}
+.row .v{font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
+.v.ok{color:var(--ok);font-weight:600}
+.v.nok{color:var(--nok);font-weight:600}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block;margin-left:7px;vertical-align:1px}
+
+/* ---------- logger ---------- */
+.metrics{display:flex;align-items:center;gap:26px}
+.metric{display:flex;align-items:center;gap:9px}
+.metric .txt{line-height:1.15}
+.metric .lbl{font-size:12px;font-weight:600;color:var(--ink-soft)}
+.metric .num{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+.metric .num.ok{color:var(--ok)}
+.metric .num.nok{color:var(--nok)}
+
+.log{
+  flex:1 1 auto;
+  min-height:180px;
+  overflow-y:auto;
+  border:1px solid #ececee;
+  border-radius:8px;
+  padding:10px 8px 10px 12px;
+  background:#fff;
+  font-family:var(--mono);
+  font-size:11.6px;
+  line-height:1.62;
+}
+.log-line{display:flex;gap:26px;white-space:pre-wrap}
+.log-line .t{color:#7b8089;flex:none}
+.log-line .m{color:#31353c}
+.log::-webkit-scrollbar{width:9px}
+.log::-webkit-scrollbar-track{background:#f4f4f5;border-radius:9px}
+.log::-webkit-scrollbar-thumb{background:#c9cacd;border-radius:9px;border:2px solid #fff}
+.log{scrollbar-width:thin;scrollbar-color:#c9cacd #f4f4f5}
+
+/* ---------- graph ---------- */
+.legend{display:flex;align-items:center;gap:22px;font-size:12.5px;font-weight:600}
+.legend span{display:flex;align-items:center;gap:7px;color:var(--ink-soft)}
+.legend b{width:22px;height:2px;border-radius:2px;position:relative;display:inline-block}
+.legend b::after{
+  content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:7px;height:7px;border-radius:50%;background:inherit;
+}
+.legend .ok b{background:var(--ok)}
+.legend .nok b{background:var(--nok)}
+.chart-wrap{flex:1 1 auto;display:flex;align-items:center;min-height:0}
+.chart{display:block;width:100%;height:auto;max-height:100%}
+.caption{
+  padding:14px 6px 2px;
+  font-size:14px;
+  color:var(--ink-soft);
+  line-height:1.5;
+}
+.caption b{color:var(--ink);font-weight:700}
+.caption .ok{color:var(--ok);font-weight:700}
+.caption .nok{color:var(--nok);font-weight:700}
+
+/* ---------- responsive ---------- */
+@media (max-width:1180px){
+  .app{grid-template-columns:minmax(0,1fr);grid-template-rows:none}
+  .camera-card,.logger-card,.left-bottom,.graph-card{grid-column:1;grid-row:auto}
+  .log{min-height:0;height:390px;flex:none}
+}
+@media (max-width:720px){
+  body{padding:12px}
+  .left-bottom{grid-template-columns:minmax(0,1fr)}
+  .toolbar{grid-template-columns:repeat(2,1fr)}
+  .metrics{gap:16px;flex-wrap:wrap}
+  .card-head h2{font-size:18px}
+  .brand-card{min-height:150px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ================= ROW 1 · LEFT ================= -->
+
+    <!-- Camera View -->
+    <section class="card camera-card">
+      <div class="card-head">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M14.5 4h-5L8 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-4l-1.5-2Z"/><circle cx="12" cy="13" r="3.6"/></svg>
+        <h2>Camera View</h2>
+      </div>
+
+      <div class="viewport" id="viewport">
+        <!-- EDIT ME 1/4 : path to the image shown in Camera View -->
+        <img id="frame" src="Image_004.png" alt="Captured frame">
+        <div class="missing">Image_004.png not found — set the path in &lt;img id="frame" src="…"&gt;</div>
+      </div>
+
+      <div class="toolbar">
+        <button class="btn"><svg class="icon sm" viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><path d="M12 2v10"/></svg>DISCONNECT</button>
+        <button class="btn"><svg class="icon sm" viewBox="0 0 24 24"><path d="M14.5 4h-5L8 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-4l-1.5-2Z"/><circle cx="12" cy="13" r="3.6"/></svg>CAPTURE</button>
+        <button class="btn"><svg class="icon sm" viewBox="0 0 24 24"><path d="M6 20v-6"/><path d="M12 20V4"/><path d="M18 20v-9"/></svg>ANALYZE</button>
+        <button class="btn"><svg class="icon sm" viewBox="0 0 24 24"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0Z"/><path d="m7.5 10.5 2-2"/><path d="m10.5 13.5 2-2"/><path d="m13.5 16.5 2-2"/></svg>MEASURE</button>
+        <button class="btn"><svg class="icon sm" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6"/><path d="M18.5 6l-.8 13.1A2 2 0 0 1 15.7 21H8.3a2 2 0 0 1-2-1.9L5.5 6"/><path d="M10 10.5v6"/><path d="M14 10.5v6"/></svg>CLEAR</button>
+      </div>
+    </section>
+
+  <!-- ================= ROW 1 · RIGHT ================= -->
+
+    <!-- System Logger — stretches to the Camera View card's height -->
+    <section class="card logger-card">
+      <div class="card-head">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>
+        <h2>System Logger</h2>
+        <span class="spacer"></span>
+        <div class="metrics">
+          <div class="metric">
+            <svg class="icon sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M8 8h5"/><path d="M8 12h8"/><path d="M8 16h6"/></svg>
+            <div class="txt"><div class="lbl">Total Logs</div><div class="num" id="mTotal">156</div></div>
+          </div>
+          <div class="metric">
+            <svg class="icon sm" viewBox="0 0 24 24" style="stroke:var(--ok)"><circle cx="12" cy="12" r="9"/><path d="m8.4 12.2 2.5 2.5 4.7-5"/></svg>
+            <div class="txt"><div class="lbl">OK Detections</div><div class="num ok" id="mOk">82</div></div>
+          </div>
+          <div class="metric">
+            <svg class="icon sm" viewBox="0 0 24 24" style="stroke:var(--nok)"><circle cx="12" cy="12" r="9"/><path d="M12 8.2v7.6"/><path d="M8.2 12h7.6"/></svg>
+            <div class="txt"><div class="lbl">NOK Detections</div><div class="num nok" id="mNok">74</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================
+           EDIT ME 3/4 — LOG LINES
+           One <div class="log-line"> per entry: timestamp + message.
+           ============================================================ -->
+      <div class="log" id="log">
+        <div class="log-line"><span class="t">14:10:02</span><span class="m">Detected defect in the area of fingerprint on the front side of the metallic object. Confidence: 92.93 %.</span></div>
+        <div class="log-line"><span class="t">14:10:08</span><span class="m">The result of the SynthEye AI analysis is OK. Confidence: 99.86 %.</span></div>
+        <div class="log-line"><span class="t">14:10:08</span><span class="m">The SynthEye AI analysis has been completed.</span></div>
+        <div class="log-line"><span class="t">14:10:11</span><span class="m">Capture button pressed. Performing camera scan.</span></div>
+        <div class="log-line"><span class="t">14:10:11</span><span class="m">Image successfully captured with resolution 1600x1200 in RGB format.</span></div>
+        <div class="log-line"><span class="t">14:10:12</span><span class="m">Analyzed button pressed. Performing SynthEye AI analysis of the RGB image.</span></div>
+        <div class="log-line"><span class="t">14:10:11</span><span class="m">Detected defect side of the metallic object on the image. Confidence: 93.25 %.</span></div>
+        <div class="log-line"><span class="t">14:10:12</span><span class="m">The result of the SynthEye AI analysis is OK.</span></div>
+        <div class="log-line"><span class="t">14:10:12</span><span class="m">The SynthEye AI analysis has been completed.</span></div>
+        <div class="log-line"><span class="t">14:10:16</span><span class="m">Capture button pressed. Performing camera scan.</span></div>
+        <div class="log-line"><span class="t">14:10:16</span><span class="m">Image successfully captured with resolution 1600x1200 in RGB format.</span></div>
+        <div class="log-line"><span class="t">14:10:16</span><span class="m">Analyze button pressed. Performing SynthEye AI analysis of the RGB image.</span></div>
+        <div class="log-line"><span class="t">14:10:17</span><span class="m">Detected front side of the metallic object on the image. Confidence: 93.15 %.</span></div>
+        <div class="log-line"><span class="t">14:10:17</span><span class="m">The result of the SynthEye AI analysis is OK.</span></div>
+        <div class="log-line"><span class="t">14:10:17</span><span class="m">The SynthEye AI analysis has been completed.</span></div>
+        <div class="log-line"><span class="t">14:10:21</span><span class="m">Capture button pressed. Performing camera scan.</span></div>
+        <div class="log-line"><span class="t">14:10:21</span><span class="m">Image successfully captured with resolution 1600x1200 in RGB format.</span></div>
+        <div class="log-line"><span class="t">14:10:21</span><span class="m">Analyze button pressed. Performing SynthEye AI analysis of the RGB image.</span></div>
+        <div class="log-line"><span class="t">14:10:22</span><span class="m">Detected front side of the metallic object on the image. Confidence: 93.15 %.</span></div>
+        <div class="log-line"><span class="t">14:10:22</span><span class="m">Detected defect in the area of fingerprint on the front side of the metallic object. Confidence: 92.93 %.</span></div>
+        <div class="log-line"><span class="t">14:10:23</span><span class="m">The result of the SynthEye AI analysis is NOK. Confidence: 92.93 %.</span></div>
+        <div class="log-line"><span class="t">14:10:23</span><span class="m">The SynthEye AI analysis has been completed.</span></div>
+      </div>
+    </section>
+
+  <!-- ================= ROW 2 · LEFT ================= -->
+
+    <!-- Brand + Status/Statistics -->
+    <div class="left-bottom">
+
+      <section class="card brand-card" id="brandCard">
+        <!-- EDIT ME 2/4 : path to the logo image -->
+        <img class="brand-logo" id="logo" src="logo.svg" alt="">
+        <div class="missing">logo.svg not found — set the path in &lt;img id="logo" src="…"&gt;</div>
+      </section>
+
+      <div class="stack">
+
+        <!-- Status -->
+        <section class="card">
+          <div class="card-head">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9-6-18-3 9H2"/></svg>
+            <h2 style="font-size:19px">Status</h2>
+          </div>
+          <div class="rows">
+            <div class="row">
+              <svg class="icon xs" viewBox="0 0 24 24" style="stroke:var(--ink-soft)"><path d="M14.5 4h-5L8 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-4l-1.5-2Z"/><circle cx="12" cy="13" r="3.6"/></svg>
+              <span class="k">Camera</span><span class="fill"></span>
+              <span class="v ok">Connected<span class="dot"></span></span>
+            </div>
+            <div class="row">
+              <svg class="icon xs" viewBox="0 0 24 24" style="stroke:var(--ink-soft)"><path d="M3 8V5.5A1.5 1.5 0 0 1 4.5 4H7"/><path d="M17 4h2.5A1.5 1.5 0 0 1 21 5.5V8"/><path d="M21 16v2.5A1.5 1.5 0 0 1 19.5 20H17"/><path d="M7 20H4.5A1.5 1.5 0 0 1 3 18.5V16"/><circle cx="9" cy="9.5" r="1.3" fill="currentColor"/><circle cx="15" cy="9.5" r="1.3" fill="currentColor"/><circle cx="9" cy="14.5" r="1.3" fill="currentColor"/><circle cx="15" cy="14.5" r="1.3" fill="currentColor"/></svg>
+              <span class="k">Resolution</span><span class="fill"></span>
+              <span class="v">1920 x 1200</span>
+            </div>
+            <div class="row">
+              <svg class="icon xs" viewBox="0 0 24 24" style="stroke:var(--ink-soft)"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3.2 1.9"/></svg>
+              <span class="k">Last Update</span><span class="fill"></span>
+              <span class="v">14:20:55</span>
+            </div>
+            <div class="row">
+              <svg class="icon xs" viewBox="0 0 24 24" style="stroke:var(--ink-soft)"><path d="M12 2.8 21.2 12 12 21.2 2.8 12 12 2.8Z"/><circle cx="12" cy="12" r="2.6"/></svg>
+              <span class="k">System</span><span class="fill"></span>
+              <span class="v ok">Ready</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Statistics -->
+        <section class="card">
+          <div class="card-head">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M5 20v-5"/><path d="M10 20V9"/><path d="M15 20v-8"/><path d="M20 20V5"/></svg>
+            <h2 style="font-size:19px">Statistics</h2>
+          </div>
+          <div class="rows">
+            <div class="row"><span class="k">Total Images Analyzed</span><span class="fill"></span><span class="v">156</span></div>
+            <div class="row"><span class="k">OK Detections</span><span class="fill"></span><span class="v ok">82</span></div>
+            <div class="row"><span class="k">NOK Detections</span><span class="fill"></span><span class="v nok">74</span></div>
+            <div class="row"><span class="k">OK Rate</span><span class="fill"></span><span class="v ok">52.6 %</span></div>
+            <div class="row"><span class="k">NOK Rate</span><span class="fill"></span><span class="v nok">47.4 %</span></div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+  <!-- ================= ROW 2 · RIGHT ================= -->
+
+    <!-- Productivity Graph — top edge aligns with the Status card -->
+    <section class="card graph-card">
+      <div class="card-head">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 17.5 9.5 11l4 4L21 7"/><path d="M15.5 7H21v5.5"/></svg>
+        <h2>Productivity Graph</h2>
+        <span class="spacer"></span>
+        <div class="legend">
+          <span class="ok"><b></b>OK Detections</span>
+          <span class="nok"><b></b>NOK Detections</span>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <svg class="chart" id="chart" viewBox="0 0 780 300" role="img"
+             aria-label="Cumulative OK and NOK detections over 21 iterations"></svg>
+      </div>
+      <p class="caption">
+        The total number of images analyzed is <b>156</b>, of which <span class="ok">82</span>
+        were found to be <span class="ok">OK</span> and <span class="nok">74</span>
+        were found to be <span class="nok">NOK</span>.
+      </p>
+    </section>
+
+</div>
+
+<script>
+/* ============================================================
+   EDIT ME 4/4 — CHART DATA
+   Values are cumulative totals, sampled twice per iteration
+   (0, 0.5, 1, 1.5 … 21). Just replace the arrays; the axes,
+   points, lines and end labels all follow automatically.
+   ============================================================ */
+const SERIES = {
+  ok:  [5,8,15,20,22,22,22,22,23,25,28,31,34,37,40,43,45,45,44,44,45,48,
+        52,55,58,58,58,60,62,63,64,66,68,70,72,73,73,74,76,78,80,82,82],
+  nok: [4,4,4,4,4,4,5,10,16,16,16,16,16,16,16,16,16,17,17,18,21,22,
+        22,22,22,23,25,28,29,29,29,29,33,37,40,41,41,41,41,45,50,56,74]
+};
+const X_MAX = 21, Y_MAX = 100, Y_STEP = 20;
+const COLOR = { ok:'#16a34a', nok:'#ef4444' };
+
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('chart');
+const W = 780, H = 300, M = { t:10, r:44, b:46, l:52 };
+const plotW = W - M.l - M.r, plotH = H - M.t - M.b;
+
+const sx = v => M.l + (v / X_MAX) * plotW;
+const sy = v => M.t + plotH - (v / Y_MAX) * plotH;
+
+const el = (tag, attrs, text) => {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (text !== undefined) n.textContent = text;
+  svg.appendChild(n);
+  return n;
+};
+
+/* y grid + labels */
+for (let v = 0; v <= Y_MAX; v += Y_STEP) {
+  el('line', { x1:M.l, x2:M.l + plotW, y1:sy(v), y2:sy(v),
+               stroke:'#e9eaec', 'stroke-width':1 });
+  el('text', { x:M.l - 12, y:sy(v) + 4, 'text-anchor':'end',
+               'font-size':12.5, fill:'#8a8f98',
+               'font-family':"Inter, sans-serif" }, v);
+}
+/* axes */
+el('line', { x1:M.l, x2:M.l, y1:M.t, y2:M.t + plotH, stroke:'#d9dadd' });
+el('line', { x1:M.l, x2:M.l + plotW, y1:M.t + plotH, y2:M.t + plotH, stroke:'#d9dadd' });
+
+/* x ticks: every 2 iterations, plus the final one */
+const ticks = [];
+for (let v = 0; v <= X_MAX - 1; v += 2) ticks.push(v);
+ticks.push(X_MAX);
+ticks.forEach(v => {
+  el('line', { x1:sx(v), x2:sx(v), y1:M.t + plotH, y2:M.t + plotH + 5, stroke:'#d9dadd' });
+  el('text', { x:sx(v), y:M.t + plotH + 20, 'text-anchor':'middle',
+               'font-size':12.5, fill:'#8a8f98',
+               'font-family':"Inter, sans-serif" }, v);
+});
+
+/* axis titles */
+el('text', { x:M.l + plotW / 2, y:H - 6, 'text-anchor':'middle',
+             'font-size':12.5, fill:'#5a5f66', 'font-family':"Inter, sans-serif" }, 'Iteration');
+el('text', { x:16, y:M.t + plotH / 2, 'text-anchor':'middle',
+             transform:`rotate(-90 16 ${M.t + plotH / 2})`,
+             'font-size':12.5, fill:'#5a5f66', 'font-family':"Inter, sans-serif" }, 'Total');
+
+/* series */
+Object.keys(SERIES).forEach(key => {
+  const data = SERIES[key], step = X_MAX / (data.length - 1), c = COLOR[key];
+  const pts = data.map((v, i) => [sx(i * step), sy(v)]);
+
+  el('polyline', { points:pts.map(p => p.join(',')).join(' '), fill:'none',
+                   stroke:c, 'stroke-width':2.2,
+                   'stroke-linejoin':'round', 'stroke-linecap':'round' });
+  pts.forEach(p => el('circle', { cx:p[0], cy:p[1], r:2.6, fill:c }));
+
+  const last = pts[pts.length - 1];
+  el('text', { x:last[0] + 12, y:last[1] + 5, 'font-size':14, 'font-weight':700,
+               fill:c, 'font-family':"Inter, sans-serif" }, data[data.length - 1]);
+});
+
+/* graceful fallbacks when an image path is wrong */
+document.getElementById('frame').addEventListener('error',
+  () => document.getElementById('viewport').classList.add('no-image'));
+document.getElementById('logo').addEventListener('error',
+  () => document.getElementById('brandCard').classList.add('no-logo'));
+</script>
+</body>
+</html>
