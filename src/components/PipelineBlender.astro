@@ -1,8 +1,53 @@
 ---
 import Picture from './Picture.astro';
+
+/* Real vs. rendered — srovnání vedle sebe, identita napsaná od začátku.
+
+   Dřív to byl kvíz („hádej, který je render"). Nefunkční: každý snímek je jiný
+   vzorek — reálná kontaminace je na horní ploše, procedurální na dolní — takže
+   divák nepoznával render, poznával „jinou fotku". Důkaz tvrzení z citace nad
+   prvkem („indistinguishable from reality") proto nenese oko diváka, ale
+   shodné skóre detektoru vypsané pod oběma snímky.
+
+   Ze stejného důvodu je nelze překrývat: wipe mezi dvěma neregistrovanými
+   vzorky se čte jako chyba registrace, ne jako přechod render → realita.
+
+   Oba snímky jsou cropnuté stejným cropem 700×900 (viz build-assets.mjs),
+   takže díl v nich zabírá stejný podíl kádru — bez toho by se rozdíl čet jako
+   „jeden je blíž".
+
+   Reálná strana je vlevo: čtení „realita → simulace" je přirozené a maskovat
+   render už není proč. */
+
+// TODO: reálné hodnoty z inference nad real_before.png / render_after.png.
+// Jeden zdroj pravdy pro statický readout i hover overlay — nesmí se rozejít.
+const DETECTION_CLASS = 'Cls_Obj_Front_Side';
+const CONFIDENCE = { real: 99.02, synthetic: 98.94 };
+
+const CARDS = [
+  {
+    slug: 'compare-real',
+    kind: 'real',
+    title: 'Real capture',
+    meta: 'Basler acA1920-40uc · 16 mm · f/4.0',
+    confidence: CONFIDENCE.real,
+    alt: 'Machined metal part with fingerprint contamination on the upper face, seen from the inspection camera angle',
+  },
+  {
+    slug: 'compare-render',
+    kind: 'synthetic',
+    title: 'Blender render',
+    meta: 'Cycles · 512 spp · procedural fingerprint',
+    confidence: CONFIDENCE.synthetic,
+    alt: 'Machined metal part with fingerprint contamination on the lower face, seen from the inspection camera angle',
+  },
+];
+
+/* Co je na obou stranách shodné — tvrzení „jedna komora, dva výstupy". */
+const SHARED = ['same lens', 'same lighting', 'same material', 'same crop'];
 ---
 
-<section id="blender" class="pipeline-blender section" aria-labelledby="blender-heading" data-defect-revealer-section>
+<section id="blender" class="pipeline-blender section" aria-labelledby="blender-heading">
   <div class="container">
     <h2 id="blender-heading" data-reveal>First principles: physical simulation</h2>
 
@@ -27,45 +72,56 @@ import Picture from './Picture.astro';
       </div>
     </div>
 
-    <div class="revealer-wrap" data-defect-revealer tabindex="0" role="group" aria-label="Interactive defect revealer: move cursor to reveal hidden fingerprint defect under UV-style lighting">
-      <p class="sr-only">Clean metallic part with hidden fingerprint defect. Use pointer or arrow keys to reveal defects.</p>
-      <div class="revealer">
-        <div class="revealer__defect">
-          <Picture slug="part-front" alt="" loading="lazy" />
-          <div class="revealer__defect-overlay" aria-hidden="true">
-            <svg width="100%" height="100%" preserveAspectRatio="none">
-              <defs>
-                <filter id="fp-noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3"/><feColorMatrix values="0 0 0 0 0.9 0 0 0 0 0.2 0 0 0 0 0.2 0 0 0 0.4 0"/></filter>
-              </defs>
-              <ellipse cx="48%" cy="52%" rx="18%" ry="14%" filter="url(#fp-noise)" opacity="0.5"/>
-              <ellipse cx="35%" cy="40%" rx="8%" ry="6%" fill="rgba(80,60,40,0.2)" style="mix-blend-mode:overlay"/>
-            </svg>
-          </div>
-        </div>
-        <div class="revealer__clean" data-revealer-clean>
-          <Picture
-            slug="part-front"
-            alt="Clean part for defect revealer"
-            loading="lazy"
-            inspectable
-            label="Cls_Obj_Front_Side"
-            confidence={93.15}
-            box="59.6,27.9,22.2,53.4"
-            defectLabel="Cls_Defect_Fingerprint"
-            defectConfidence={92.93}
-            defects="60.3,29.1,7.7,23.3;73.1,34.4,5.1,15.0"
-          />
-        </div>
-        <div class="revealer__ring" data-revealer-ring aria-hidden="true"></div>
-      </div>
-      <p class="revealer-caption mono">Can you spot the defect? The AI can. Every time.</p>
+    <div class="ab" data-blender-bridge data-reveal-group>
+      <ol class="ab-pair">
+        {CARDS.map(({ slug, kind, title, meta, confidence, alt }) => (
+          <li class:list={['ab-card', `ab-card--${kind}`]} data-reveal>
+            <div class="ab-card__frame viewfinder">
+              <Picture
+                slug={slug}
+                alt={alt}
+                loading="lazy"
+                sizes="(max-width: 768px) 44vw, 22vw"
+                inspectable
+                label={DETECTION_CLASS}
+                confidence={confidence}
+              />
+              <p class="ab-card__origin mono">
+                <b>{title}</b><span>{meta}</span>
+              </p>
+            </div>
+            {/* Skóre staticky, ne jen v hover overlayi: caption tvrdí, že detektor
+                oba snímky skóruje stejně — to musí být vidět bez interakce.
+                Pro odečítač je to duplikát (je v aria-label snímku), proto skryté. */}
+            <p class="ab-card__score mono" aria-hidden="true">
+              <span>{DETECTION_CLASS}</span><b>{confidence.toFixed(2)}%</b>
+            </p>
+          </li>
+        ))}
+
+        <li class="ab-bridge" aria-hidden="true" data-reveal>
+          <svg class="ab-bridge__rule" viewBox="0 0 1 100" preserveAspectRatio="none" focusable="false">
+            <line x1="0.5" y1="0" x2="0.5" y2="100" vector-effect="non-scaling-stroke" />
+          </svg>
+          <p class="ab-bridge__specs mono">{SHARED.join(' · ')}</p>
+        </li>
+      </ol>
+
+      {/* Tentýž výpis vodorovně — pod ~1024px se do výšky kádru vertikálně
+          nevejde, ale zmizet nesmí, nese tvrzení „jedna komora". */}
+      <p class="ab-shared mono" aria-hidden="true" data-reveal>{SHARED.join(' · ')}</p>
+
+      <p class="ab-caption mono" data-reveal>
+        Left: inspection camera. Right: Blender. Same lens, same lighting, same material —
+        and the detector scores them the same.
+      </p>
     </div>
   </div>
 </section>
 
 <script>
   import { whenVisible } from '../scripts/lib/lazy-init.js';
-  whenVisible('[data-defect-revealer-section]', () => import('../scripts/defect-revealer.js'));
+  whenVisible('[data-blender-bridge]', () => import('../scripts/blender-bridge.js'));
 </script>
 
 <style>
@@ -78,27 +134,158 @@ import Picture from './Picture.astro';
   .blender-annotations li { margin-bottom: var(--space-2); }
   .blender-annotations span { color: var(--text-secondary); margin-right: var(--space-2); }
   .blender-quote { margin-top: var(--space-5); font-size: 1.1rem; color: var(--text-secondary); border-left: 2px solid var(--accent); padding-left: var(--space-5); font-style: italic; }
-  .revealer-wrap { max-width: 720px; margin-inline: auto; }
-  .revealer { position: relative; aspect-ratio: 4/3; overflow: hidden; background: var(--bg-deep); }
-  .revealer__defect, .revealer__clean { position: absolute; inset: 0; }
-  .revealer__defect-overlay { position: absolute; inset: 0; pointer-events: none; }
-  .revealer__clean { clip-path: circle(0px at 50% 50%); }
-  .revealer__ring {
+  /* ── Real vs. rendered ───────────────────────────────────────────────────
+     Dvě stejně velké karty s permanentní identitou, mezi nimi bridge se
+     shodnými parametry. Rám drží nativní poměr sdíleného cropu (700×900),
+     takže díl vyplňuje kádr a obě strany mají shodné měřítko. */
+  .ab { max-width: 820px; margin-inline: auto; }
+  .ab-pair {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: var(--space-5);
+    align-items: start;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .ab-card { margin: 0; }
+  /* Bridge je v DOM poslední (karty jdou z jednoho map()), do prostředního
+     sloupce ho staví order — ne grid-column, aby mobilní 1fr 1fr fallback
+     nemusel nic přepisovat. */
+  .ab-bridge { order: 1; }
+  .ab-card:nth-child(2) { order: 2; }
+  /* Rohové značky viewfinderu drží rám snímku, ne kartu — na kartě by spodní
+     značka visela pod rezervovaným místem pro popisek, odtržená od obrazu.
+     Žádné overflow: hidden není potřeba, snímek klipuje .picture-wrap. */
+  .ab-card__frame {
+    position: relative;
+    aspect-ratio: 700 / 900; /* = sdílený crop, viz build-assets.mjs */
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    transition: border-color var(--dur-base) var(--ease-out);
+  }
+  .ab-card :global(.picture-wrap) { width: 100%; height: 100%; background: none; }
+  .ab-card :global(.picture-img) { width: 100%; height: 100%; object-fit: cover; }
+  .ab-card:hover .ab-card__frame,
+  .ab-card:focus-within .ab-card__frame { border-color: var(--border-hover); }
+
+  /* Identita jako overlay v kádru, ne popisek pod ním — první, co oko na
+     snímku najde, musí být „co to je", ne odkaz na interakci. */
+  .ab-card__origin {
     position: absolute;
-    width: 200px; height: 200px;
-    margin: -100px 0 0 -100px;
-    border: 1px solid rgba(123,110,246,0.4);
-    border-radius: 50%;
-    pointer-events: none;
-    opacity: 0;
+    top: var(--space-3);
+    left: var(--space-3);
+    /* Šířka podle textu, ne přes celý kádr — pruh přes celou šířku zakrývá díl. */
+    width: max-content;
+    max-width: calc(100% - 2 * var(--space-3));
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 6px 10px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    background: rgba(8, 8, 12, 0.72);
+    border: 1px solid var(--border-hover);
   }
-  .revealer__ring::before, .revealer__ring::after {
-    content: ''; position: absolute; background: var(--accent); opacity: 0.5;
+  .ab-card__origin b {
+    font-weight: 400;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
   }
-  .revealer__ring::before { width: 1px; height: 12px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
-  .revealer__ring::after { width: 12px; height: 1px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
-  .revealer-caption { text-align: center; margin-top: var(--space-4); font-size: var(--fs-mono-sm); color: var(--text-muted); }
+  /* Accent = vygenerované. Jediné barevné odlišení v prvku, takže nese celý
+     rozdíl mezi oběma stranami. */
+  .ab-card--synthetic .ab-card__origin b { color: var(--accent-light); }
+
+  /* Readout drží formát hover chipu z inspection-cursor.js (`label conf%`) —
+     dvě čtení téhož čísla se nesmí lišit sazbou. */
+  .ab-card__score {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin: var(--space-3) 0 0;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+  }
+  .ab-card__score b {
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+  }
+  .ab-card--synthetic .ab-card__score b { color: var(--accent-light); }
+
+  /* ── Spec bridge ─────────────────────────────────────────────────────────
+     Vertikální linka mezi kádry se seznamem toho, co je shodné. Tvrdí „jedna
+     komora, dva výstupy" — bez ní by srovnání vypadalo jako dvě nesouvisející
+     fotky. */
+  .ab-bridge {
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    margin: 0;
+  }
+  .ab-bridge__rule {
+    width: 1px;
+    height: 100%;
+    flex: none;
+    overflow: visible;
+  }
+  /* Výchozí stav je dokreslená linka, ne prázdná: bez JS (nebo při reduced
+     motion) musí být vidět. Skrytí a dokreslení si dělá blender-bridge.js. */
+  .ab-bridge__rule line {
+    stroke: var(--border-hover);
+    stroke-width: 1;
+    stroke-dasharray: 100;
+    stroke-dashoffset: 0;
+  }
+  .ab-bridge__specs {
+    margin: 0;
+    writing-mode: vertical-rl;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  /* Vodorovná varianta výpisu — jen tam, kde bridge text nezobrazuje. */
+  .ab-shared {
+    display: none;
+    margin: var(--space-4) 0 0;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .ab-caption {
+    max-width: 60ch;
+    margin: var(--space-5) 0 0;
+    font-size: var(--fs-mono-sm);
+    line-height: 1.6;
+    color: var(--text-muted);
+  }
+
+  /* Kádr je tady vysoký ~420 px, vertikální výpis potřebuje ~460 px → přeteče
+     mimo obraz. Linka zůstává, text se přesouvá pod pár. */
+  @media (max-width: 1023px) {
+    .ab-bridge__specs { display: none; }
+    .ab-shared { display: block; }
+  }
+
   @media (max-width: 768px) {
     .blender-grid { grid-template-columns: 1fr; }
+    /* Vedle sebe zůstává i na mobilu — srovnání je celý smysl prvku. Bridge
+       ale ne: vertikální text mezi kádry sežere šířku, kterou potřebuje obraz. */
+    .ab-pair { grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+    .ab-bridge { display: none; }
+    .ab-card__origin { padding: 4px 6px; font-size: 9px; }
+    .ab-card__score { flex-direction: column; gap: 2px; }
   }
 </style>

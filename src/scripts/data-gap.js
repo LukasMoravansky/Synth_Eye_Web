@@ -67,59 +67,140 @@ function initRatioBar(root) {
 }
 
 /* ── Blok 2 — CAD geometrie → fyzikální render ────────────────────────────
-   Pět fází je odvozeno z jediného reálného snímku dílu: wireframe (SVG nad
-   siluetou) → plochý matte materiál → grayscale textura → světelný sweep +
-   kontrast → plný render. Žádná další síťová data: fotka je ta samá jako
-   v bloku 1, tedy z cache. */
+   Pět fází, čtyři z nich reálné Blender passy registrované na pixel
+   (build-assets.mjs), první je kótovaný CAD wireframe:
+
+     01 wireframe (SVG)   02 cad-solid   03 cad-pbr   04 cad-light   05 cad-render
+
+   Fáze 04 a 05 sdílí jednu proměnnou `wipe`: světelný pass propouští úzký
+   pruh a render se odkrývá plným wipe se STEJNOU hranou (47–53 % masky).
+   Světelný pruh je tedy přesně ta hrana, za kterou už je díl hotový —
+   světlo render „namaluje". */
 function initCadTransform(root) {
   const cad = root.querySelector('[data-cad]');
   if (!cad) return;
 
-  const photo = root.querySelector('[data-cad-photo]');
-  const matte = root.querySelector('[data-cad-matte]');
-  const light = root.querySelector('.cad-layer--light');
-  const sweep = root.querySelector('[data-cad-sweep]');
+  const solid = root.querySelector('[data-cad-solid]');
+  const pbr = root.querySelector('[data-cad-pbr]');
+  const light = root.querySelector('[data-cad-light]');
+  const render = root.querySelector('[data-cad-render]');
   const wire = root.querySelector('[data-cad-wire]');
   const grid = root.querySelector('[data-cad-grid]');
   const hud = root.querySelector('[data-cad-hud]');
   const steps = root.querySelector('[data-cad-steps]');
   const phases = root.querySelectorAll('.cad-step');
 
+  // mask-position 100 % = hrana wipu vlevo mimo díl (nic neodkryto),
+  // 0 % = vpravo mimo (odkryto všechno). Mimo [0, 100] by maska přestala
+  // element pokrývat a odmaskovaná část by zmizela — viz komentář v CSS.
+  const WIPE_FROM = 100;
+  const WIPE_TO = 0;
+
+  // Aktivní krok se odvozuje ze STEJNÝCH hranic jako vrstvy pod ním.
+  // Rovnoměrné pětiny (Math.floor(p * 5)) rozsvěcely „04 Physical lighting"
+  // až v půlce světelného přejezdu a „03 PBR textures" ještě ve fázi solidu —
+  // popiska tvrdila něco jiného, než co bylo vidět.
+  const PHASE_AT = [0.16, 0.34, 0.52, 0.82];
+  const phaseIndex = (p) => PHASE_AT.filter((t) => p >= t).length;
+
+  // CSS default je hotový render (kvůli no-JS). Startovní stav — samotný
+  // wireframe — se nasadí až tady, a to ještě mimo viewport: whenVisible
+  // inicializuje s rootMargin 200 px, takže přepnutí není vidět.
+  const armCad = () => {
+    if (grid) grid.style.opacity = '1';
+    if (wire) wire.style.opacity = '1';
+    if (solid) solid.style.opacity = '0';
+    if (pbr) pbr.style.opacity = '0';
+    if (light) light.style.opacity = '0';
+    if (render) {
+      render.style.maskPosition = `${WIPE_FROM}% 0`;
+      render.style.webkitMaskPosition = `${WIPE_FROM}% 0`;
+    }
+    if (hud) hud.style.opacity = '0';
+    if (steps) steps.style.setProperty('--cad-progress', '0');
+    phases.forEach((el, i) => {
+      el.classList.toggle('is-active', i === 0);
+      el.classList.remove('is-past');
+    });
+  };
+  armCad();
+
   let lastIdx = -1;
 
-  ScrollTrigger.create({
-    trigger: cad,
-    start: 'top 78%',
-    end: 'bottom 35%',
-    scrub: true,
-    onUpdate(self) {
-      const p = self.progress;
+  /* Pin režim: track (.gap-block--2) je 220vh vysoký a stage se v něm sticky
+     drží celou obrazovku, takže start 'top top' / end 'bottom bottom' kryje
+     sticky okno 1:1 (stejný model jako PipelineTransition). Zapíná se jen tam,
+     kde se text i stage vejdou do jedné obrazovky — na mobilu a v nízkém okně
+     zůstává tok, jen s delším rozsahem než původních 78 % → 35 %.
+     Query musí zůstat v souladu s @media v DataGap.astro. */
+  const track = cad.closest('[data-cad-track]');
+  const pinQuery = window.matchMedia('(min-width: 769px) and (min-height: 640px)');
 
-      if (grid) grid.style.opacity = q(1 - seg(p, 0.1, 0.3));
-      if (wire) wire.style.opacity = q(1 - seg(p, 0.22, 0.45));
-      if (matte) matte.style.opacity = q(seg(p, 0.14, 0.3) - seg(p, 0.4, 0.58));
-      if (photo) {
-        photo.style.opacity = q(seg(p, 0.36, 0.6));
-        const gray = q(1 - seg(p, 0.62, 0.86));
-        const contrast = q(0.72 + 0.28 * seg(p, 0.58, 0.9));
-        const bright = q(0.86 + 0.14 * seg(p, 0.6, 0.9));
-        photo.style.filter = `grayscale(${gray}) contrast(${contrast}) brightness(${bright})`;
-      }
-      if (light) light.style.opacity = q(seg(p, 0.56, 0.72) - seg(p, 0.82, 0.97));
-      if (sweep) sweep.style.transform = `translate3d(${q(-58 + 58 * seg(p, 0.54, 0.97))}%,0,0)`;
-      if (hud) hud.style.opacity = q(seg(p, 0.86, 0.98));
-      if (steps) steps.style.setProperty('--cad-progress', q(p));
+  /** Vykreslí stav sekvence pro normalizovaný progress p ∈ ⟨0, 1⟩. */
+  const update = (p) => {
+    if (grid) grid.style.opacity = q(1 - seg(p, 0.08, 0.26));
+    if (wire) wire.style.opacity = q(1 - seg(p, 0.18, 0.38));
+    if (solid) solid.style.opacity = q(seg(p, 0.14, 0.3) - seg(p, 0.36, 0.5));
+    if (pbr) pbr.style.opacity = q(seg(p, 0.34, 0.5));
 
-      const idx = Math.min(4, Math.floor(p * 5));
-      if (idx !== lastIdx) {
-        lastIdx = idx;
-        phases.forEach((el, i) => {
-          el.classList.toggle('is-active', i === idx);
-          el.classList.toggle('is-past', i < idx);
-        });
-      }
-    },
-  });
+    const t = seg(p, 0.52, 0.92);
+    const wipe = `${q(WIPE_FROM + (WIPE_TO - WIPE_FROM) * t)}% 0`;
+    if (light) {
+      light.style.opacity = q(seg(p, 0.5, 0.57) - seg(p, 0.9, 0.97));
+      light.style.maskPosition = wipe;
+      light.style.webkitMaskPosition = wipe;
+    }
+    if (render) {
+      render.style.maskPosition = wipe;
+      render.style.webkitMaskPosition = wipe;
+    }
+
+    if (hud) hud.style.opacity = q(seg(p, 0.9, 0.99));
+    if (steps) steps.style.setProperty('--cad-progress', q(p));
+
+    const idx = phaseIndex(p);
+    if (idx !== lastIdx) {
+      lastIdx = idx;
+      phases.forEach((el, i) => {
+        el.classList.toggle('is-active', i === idx);
+        el.classList.toggle('is-past', i < idx);
+      });
+    }
+  };
+
+  let trigger = null;
+
+  const build = () => {
+    trigger?.kill();
+    const pinned = Boolean(track) && pinQuery.matches;
+    if (track) {
+      if (pinned) track.dataset.cadMode = 'pinned';
+      else delete track.dataset.cadMode;
+    }
+
+    /* Posledních ~18 % rozsahu je hold: hotový render zůstane stát v klidu
+       uprostřed obrazovky, než pin pustí. Bez hold zóny sekvence dobíhá
+       přesně ve chvíli, kdy vizuál odjíždí z viewportu, a uživateli zůstane
+       v hlavě rozpracovaná fáze místo výsledku. */
+    const SEQ_END = pinned ? 0.82 : 0.88;
+
+    trigger = ScrollTrigger.create({
+      trigger: pinned ? track : cad,
+      start: pinned ? 'top top' : 'top 88%',
+      end: pinned ? 'bottom bottom' : 'bottom 55%',
+      scrub: true,
+      onUpdate(self) {
+        update(Math.min(1, self.progress / SEQ_END));
+      },
+    });
+
+    // Track právě změnil výšku o ~150vh — pozice ostatních triggerů níž na
+    // stránce jsou tím pádem zastaralé.
+    ScrollTrigger.refresh();
+  };
+
+  build();
+  pinQuery.addEventListener('change', build);
 }
 
 /* ── Blok 3 — countery ──────────────────────────────────────────────────── */
@@ -178,14 +259,22 @@ function settleStatic(root) {
   }
   if (count) count.textContent = '130';
 
-  const photo = root.querySelector('[data-cad-photo]');
+  // Koncový stav bloku 2 = hotový render, ostatní passy zhasnuté, wipe dojezděný.
   const wire = root.querySelector('[data-cad-wire]');
-  const matte = root.querySelector('[data-cad-matte]');
+  const solid = root.querySelector('[data-cad-solid]');
+  const pbr = root.querySelector('[data-cad-pbr]');
+  const light = root.querySelector('[data-cad-light]');
+  const render = root.querySelector('[data-cad-render]');
   const hud = root.querySelector('[data-cad-hud]');
   const steps = root.querySelector('[data-cad-steps]');
-  if (photo) photo.style.opacity = '1';
   if (wire) wire.style.opacity = '0';
-  if (matte) matte.style.opacity = '0';
+  if (solid) solid.style.opacity = '0';
+  if (pbr) pbr.style.opacity = '1';
+  if (light) light.style.opacity = '0';
+  if (render) {
+    render.style.maskPosition = '0% 0';
+    render.style.webkitMaskPosition = '0% 0';
+  }
   if (hud) hud.style.opacity = '1';
   if (steps) steps.style.setProperty('--cad-progress', '1');
   root.querySelectorAll('.cad-step').forEach((el, i) => {

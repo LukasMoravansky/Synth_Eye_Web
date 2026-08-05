@@ -49,7 +49,8 @@ const height = meta?.height ?? 1200;
 const placeholder = lqip[slug as keyof typeof lqip] ?? '';
 
 // Screen reader musí dostat totéž co vidoucí uživatel na hover — tedy i nález,
-// ne jen klasifikaci objektu.
+// ne jen klasifikaci objektu. Nálezy se k `alt` PŘIDÁVAJÍ: aria-label alt
+// přebíjí, takže samotné detekce by popis snímku zahodily.
 const detections = [
   label != null && confidence != null ? `${label}, confidence ${confidence}%` : '',
   defects && defectLabel != null && defectConfidence != null
@@ -78,7 +79,7 @@ const detections = [
       fetchpriority={fetchpriority}
       class="picture-img"
       tabindex={inspectable ? 0 : undefined}
-      aria-label={inspectable && detections ? detections : undefined}
+      aria-label={inspectable && detections ? `${alt}. ${detections}` : undefined}
       {...inspectable ? {
         'data-inspectable': true,
         'data-label': label,

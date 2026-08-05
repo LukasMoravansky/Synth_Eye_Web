@@ -21,8 +21,19 @@ const ASSETS = [
     crop: { left: 939, top: 166, width: 980, height: 980 },
   },
   // Reálný párový snímek (clean / defected) — stejný díl, stejná komora, stejné světlo.
-  // Díl je v obou snímcích v pravé části kádru (union bbox 1145,302 → 1575,976 v 1920×1200);
-  // SPOLEČNÝ crop pro oba, aby pár zůstal registrovaný a šel překrývat (Defect Revealer).
+  // Defect Revealer je překládá na sebe, takže MUSÍ být registrované.
+  //
+  // Naměřeno (bbox dílu v 1920×1200, prahování jasu > 110, profily řádků/sloupců):
+  //   part_clean     x 1163→1574  y 303→932  center 1368.5,617.5  (411×629)
+  //   part_defected  x 1145→1569  y 336→975  center 1357.0,655.5  (424×639)
+  //
+  // Snímky NEJSOU z jednoho záběru — díl je v defected posunutý o (−11.5, +38) px.
+  // Společný crop by tedy pár nezaregistroval (to je oprava původního předpokladu):
+  // pod čočkou revealeru by díl při odkrytí poskočil o 38 px = 4 % výšky rámu.
+  // Proto crop defected posunutý o týž vektor — po cropu leží díl v obou na
+  // stejných souřadnicích. Zbývá rozdíl velikosti 1,6 % (629 vs 639 px výšky,
+  // mírně jiná vzdálenost kamery); na hraně dílu je to ~1 % rámu a měkký okraj
+  // čočky (radial-gradient maska) to schová.
   {
     src: path.join(CONTEXT, 'context_images', 'part_clean.png'),
     slug: 'part-clean',
@@ -33,7 +44,7 @@ const ASSETS = [
     src: path.join(CONTEXT, 'context_images', 'part_defected.png'),
     slug: 'part-defected',
     max: 1200,
-    crop: { left: 996, top: 184, width: 728, height: 910 },
+    crop: { left: 984, top: 222, width: 728, height: 910 },
   },
   // ── Particle Field Transformation ────────────────────────────────────────
   // Sekce potřebuje DVA framy se SHODNÝM aspectem (1:1) a shodným framingem,
@@ -71,6 +82,67 @@ const ASSETS = [
     flatten: BG_DEEP,
   },
   { src: path.join(CONTEXT, 'context_images', 'pbr.png'), slug: 'pbr-render', max: 1600 },
+  // ── Real vs. rendered (A/B v sekci Blender) ──────────────────────────────
+  // Reálný snímek z komory vs. Blender render téhož typu dílu. Porovnání má
+  // smysl jen když díl v obou zabírá STEJNÝ podíl kádru — jinak se čte
+  // „jeden je blíž", ne „jeden je render".
+  //
+  // Naměřeno (bbox dílu v 1920×1200, prahování jasu > 110):
+  //   real_before    x 825→1264  y 282→921  center 1044.5,601.5  (439×639)
+  //   render_after   x 826→1255  y 285→922  center 1040.5,603.5  (429×637)
+  //
+  // Framing se liší o ~2 % — sdílený crop 700×900 kolem naměřeného středu
+  // tedy stačí, žádná korekce měřítka není potřeba.
+  //
+  // Vyvážení bílé: pozadí je v obou snímcích skoro totožné (real 76,2/71,2/77,8
+  // vs render 71,7/66,8/74,0), rozdíl je na KOVU — real 229,1/207,9/212,0
+  // (R−G = +21) proti renderu 186,5/178,0/180,1 (R−G = +8,5). Reálný snímek má
+  // tedy teplý cast, který z páru udělá hádanku o vyvážení kamery místo o
+  // věrnosti renderu.
+  //
+  // gain srovnává chromatičnost kovu na render při zachovaném G:
+  //   gR = (186,5/178,0) / (229,1/207,9) = 0,9508
+  //   gB = (180,1/178,0) / (212,0/207,9) = 0,9923
+  // Na pozadí to sedne na 72,4/71,2/77,2 — blíž renderu než před korekcí.
+  // Jasový rozdíl kovu (luma 213 vs 180) korekce NEŘEŠÍ; to je expozice,
+  // ne tint, a šlo by o výrazně větší zásah do reálného assetu.
+  {
+    src: path.join(CONTEXT, 'context_images', 'real_before.png'),
+    slug: 'compare-real',
+    max: 1200,
+    crop: { left: 692, top: 152, width: 700, height: 900 },
+    gain: [0.9508, 1, 0.9923],
+  },
+  {
+    src: path.join(CONTEXT, 'context_images', 'render_after.png'),
+    slug: 'compare-render',
+    max: 1200,
+    crop: { left: 692, top: 152, width: 700, height: 900 },
+  },
+  // ── Data Gap / CAD → render (5 fází, scroll-driven) ──────────────────────
+  // Čtyři Blender passy téhož dílu: solid (materiál bez textury) → pbr
+  // (textury bez světla) → light (anizotropní specular pass, černá s bílými
+  // čarami) → render (finál). Vrstvy se překrývají a prolínají, takže MUSÍ
+  // být registrované na pixel — jinak díl mezi fázemi poskočí.
+  //
+  // Naměřeno (bbox dílu v 1920×1200, prahování + eroze):
+  //   cad_pbr     x 719→1131  y 221→848   center 925.0,534.5
+  //   cad_render  x 716→1131  y 221→854   center 923.5,537.5
+  //   cad_light   x 717→1128  y 230→853   center 922.5,541.5
+  //   cad_solid   x 831→1244  y 291→916   center 1037.5,603.5  ← POSUNUTÝ
+  //
+  // pbr/render/light jsou z jedné kamery (rozptyl center ±3 px = šum měření na
+  // zrnitém pozadí), solid je vyrenderovaný o +114,+66 px jinde. Proto sdílený
+  // crop 660×825 pro trojici a týž crop posunutý o (114,66) pro solid —
+  // po cropu leží díl ve všech čtyřech na stejných souřadnicích.
+  //
+  // Rozměry z naměřeného solidu potvrzují nominály z Measurement sekce
+  // (626 px = 60 mm → 10.43 px/mm; bore ⌀61 px = 5.8 mm; rozteč děr 258 px =
+  // 24.7 mm; šířka 414 px = 39.7 mm) — wireframe fáze 01 je na nich postavený.
+  { src: path.join(CONTEXT, 'context_images', 'cad_solid.png'), slug: 'cad-solid', max: 900, crop: { left: 708, top: 191, width: 660, height: 825 } },
+  { src: path.join(CONTEXT, 'context_images', 'cad_pbr.png'), slug: 'cad-pbr', max: 900, crop: { left: 594, top: 125, width: 660, height: 825 } },
+  { src: path.join(CONTEXT, 'context_images', 'cad_light.png'), slug: 'cad-light', max: 900, crop: { left: 594, top: 125, width: 660, height: 825 } },
+  { src: path.join(CONTEXT, 'context_images', 'cad_render.png'), slug: 'cad-render', max: 900, crop: { left: 594, top: 125, width: 660, height: 825 } },
   { src: path.join(CONTEXT, 'context_images', 'GAN_output.png'), slug: 'gan-output', max: 1600 },
   { src: path.join(CONTEXT, 'context_images', 'scheme_1.png'), slug: 'scheme-hw', max: 1600 },
   { src: path.join(CONTEXT, 'context_images', 'scheme_2.png'), slug: 'scheme-pipeline', max: 1600 },
@@ -92,14 +164,14 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 const images = {};
 const lqip = {};
 
-async function processAsset({ src, slug, max, crop, upscale = false, flatten = null }) {
+async function processAsset({ src, slug, max, crop, upscale = false, flatten = null, gain = null }) {
   if (!fs.existsSync(src)) {
     console.warn(`⚠ Missing source: ${src}`);
     return;
   }
 
   const stat = fs.statSync(src);
-  const recipe = JSON.stringify({ src, max, crop: crop ?? null, upscale, flatten });
+  const recipe = JSON.stringify({ src, max, crop: crop ?? null, upscale, flatten, gain });
   const metaPath = path.join(OUT, `${slug}.meta.json`);
   if (fs.existsSync(metaPath)) {
     const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
@@ -132,6 +204,11 @@ async function processAsset({ src, slug, max, crop, upscale = false, flatten = n
   // Sloučením na --bg-deep spadne pozadí pod cull threshold a hrana přechází
   // plynule do tmy.
   if (flatten) resized = resized.flatten({ background: flatten });
+
+  // gain: per-kanálové vyvážení bílé, [R,G,B] multiplikátory na sRGB hodnotách
+  // (tedy v témže prostoru, ve kterém se měřily průměry kanálů). Používá
+  // compare-real — viz odůvodnění u toho assetu.
+  if (gain) resized = resized.linear(gain, [0, 0, 0]);
 
   await resized.clone().avif({ quality: 50 }).toFile(path.join(OUT, `${slug}.avif`));
   await resized.clone().webp({ quality: 78 }).toFile(path.join(OUT, `${slug}.webp`));

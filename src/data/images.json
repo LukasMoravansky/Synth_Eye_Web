@@ -41,6 +41,42 @@
     "height": 412,
     "aspect": 2.1238
   },
+  "compare-real": {
+    "slug": "compare-real",
+    "width": 700,
+    "height": 900,
+    "aspect": 0.7778
+  },
+  "compare-render": {
+    "slug": "compare-render",
+    "width": 700,
+    "height": 900,
+    "aspect": 0.7778
+  },
+  "cad-solid": {
+    "slug": "cad-solid",
+    "width": 660,
+    "height": 825,
+    "aspect": 0.8
+  },
+  "cad-pbr": {
+    "slug": "cad-pbr",
+    "width": 660,
+    "height": 825,
+    "aspect": 0.8
+  },
+  "cad-light": {
+    "slug": "cad-light",
+    "width": 660,
+    "height": 825,
+    "aspect": 0.8
+  },
+  "cad-render": {
+    "slug": "cad-render",
+    "width": 660,
+    "height": 825,
+    "aspect": 0.8
+  },
   "gan-output": {
     "slug": "gan-output",
     "width": 1206,
