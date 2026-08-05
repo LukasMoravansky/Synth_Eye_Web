@@ -1,0 +1,399 @@
+---
+/* Sub-component — Latent Space Navigator (A5)
+   Layout: viewer + latent field side-by-side ≥900px, stacked below.
+   Viewer size is viewport-height aware so the whole block fits one screen. */
+---
+
+<div class="latent-nav" data-latent-nav>
+  <div class="latent-nav__viewer">
+    <div
+      class="latent-nav__display viewfinder"
+      data-latent-display
+      role="application"
+      tabindex="0"
+      aria-label="Latent space navigator — drag to explore generated variations, arrow keys to step between samples"
+      aria-describedby="latent-nav-hint"
+    >
+      <img
+        class="latent-nav__img"
+        data-latent-img
+        src="/images/latent/3-4.webp"
+        alt="GAN generated variation of the inspected part"
+        width="256"
+        height="256"
+        draggable="false"
+        decoding="async"
+      />
+      <img class="latent-nav__img" data-latent-img-b alt="" width="256" height="256" draggable="false" decoding="async" aria-hidden="true" />
+      <img class="latent-nav__img" data-latent-img-c alt="" width="256" height="256" draggable="false" decoding="async" aria-hidden="true" />
+      <img class="latent-nav__img" data-latent-img-d alt="" width="256" height="256" draggable="false" decoding="async" aria-hidden="true" />
+
+      <svg class="latent-nav__reticle" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <line x1="50" y1="0" x2="50" y2="100" />
+        <line x1="0" y1="50" x2="100" y2="50" />
+      </svg>
+
+      <span class="latent-nav__hint mono" data-latent-hint aria-hidden="true">drag to traverse</span>
+    </div>
+  </div>
+
+  <div class="latent-nav__panel">
+    <p class="latent-nav__panel-title mono">latent_field · 10 × 8</p>
+
+    <div class="latent-nav__field">
+      <span class="latent-nav__axis latent-nav__axis--y mono">surface</span>
+      <div class="latent-nav__plane" data-latent-plane>
+        <canvas data-latent-map aria-hidden="true"></canvas>
+        <div class="latent-nav__marker" data-latent-marker aria-hidden="true"></div>
+      </div>
+      <span class="latent-nav__axis latent-nav__axis--x mono">orientation</span>
+    </div>
+
+    <dl class="latent-nav__readout mono">
+      <div><dt>vector</dt><dd data-latent-vector>0.444 / 0.429</dd></div>
+      <div><dt>sample</dt><dd data-latent-cells>4,3</dd></div>
+      <div><dt>blend</dt><dd data-latent-blend>single sample</dd></div>
+      <div><dt>seed</dt><dd data-latent-seed>0x6DC7C6</dd></div>
+    </dl>
+
+    <p class="latent-nav__caption">
+      80 real StyleGAN2-ADA outputs projected onto a 2D lattice — orientation across,
+      surface state down. Every position between nodes is a blend that exists in no
+      source frame.
+    </p>
+    <p class="latent-nav__keys mono" id="latent-nav-hint">
+      <span>drag</span><span>arrows</span><span>home = reset</span>
+    </p>
+    <p class="sr-only" aria-live="polite" data-latent-live></p>
+  </div>
+</div>
+
+<script>
+  import { whenVisible } from '../scripts/lib/lazy-init.js';
+  whenVisible('[data-latent-nav]', () => import('../scripts/latent-navigator.js'));
+</script>
+
+<style>
+  .latent-nav {
+    /* Height-aware so viewer + panel never exceed one viewport on short screens. */
+    --lv-size: clamp(200px, min(46vh, 62vw), 400px);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+    justify-items: center;
+    margin-block: var(--space-6);
+  }
+
+  .latent-nav__viewer {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .latent-nav__display {
+    position: relative;
+    width: var(--lv-size);
+    aspect-ratio: 1;
+    background: var(--bg-deep);
+    /* Slightly above --border: the frame sits on near-black and needs to read. */
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    transition: border-color var(--dur-fast) ease;
+  }
+
+  .latent-nav__display:hover,
+  .latent-nav__display.is-active {
+    border-color: var(--border-hover);
+  }
+
+  .latent-nav__display.is-active {
+    cursor: grabbing;
+  }
+
+  .latent-nav__display:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  .latent-nav__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    pointer-events: none;
+  }
+
+  .latent-nav__img:first-of-type {
+    opacity: 1;
+  }
+
+  .latent-nav__img:not(:first-of-type) {
+    opacity: 0;
+  }
+
+  .latent-nav__reticle {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--dur-base) ease;
+  }
+
+  .latent-nav__reticle line {
+    stroke: var(--accent-light);
+    stroke-width: 0.25;
+    vector-effect: non-scaling-stroke;
+    opacity: 0.5;
+  }
+
+  .latent-nav__display:hover .latent-nav__reticle,
+  .latent-nav__display:focus-visible .latent-nav__reticle,
+  .latent-nav__display.is-active .latent-nav__reticle {
+    opacity: 1;
+  }
+
+  .latent-nav__hint {
+    position: absolute;
+    left: 50%;
+    bottom: var(--space-4);
+    transform: translateX(-50%);
+    font-size: var(--fs-mono-sm);
+    letter-spacing: 0.08em;
+    color: var(--text-primary);
+    background: rgba(8, 8, 12, 0.72);
+    border: 1px solid var(--border-hover);
+    padding: var(--space-1) var(--space-3);
+    white-space: nowrap;
+    pointer-events: none;
+    transition: opacity var(--dur-base) ease;
+  }
+
+  .latent-nav.is-touched .latent-nav__hint {
+    opacity: 0;
+  }
+
+  /* --- Panel --- */
+  .latent-nav__panel {
+    width: min(100%, 320px);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .latent-nav__panel-title {
+    font-size: var(--fs-mono-sm);
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+  }
+
+  .latent-nav__field {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: 1fr auto;
+    gap: var(--space-2);
+    align-items: center;
+  }
+
+  .latent-nav__axis {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .latent-nav__axis--y {
+    grid-column: 1;
+    grid-row: 1;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    justify-self: center;
+  }
+
+  .latent-nav__axis--x {
+    grid-column: 2;
+    grid-row: 2;
+    text-align: center;
+  }
+
+  .latent-nav__plane {
+    grid-column: 2;
+    grid-row: 1;
+    position: relative;
+    width: 100%;
+    aspect-ratio: 10 / 8;
+    border: 1px solid var(--border);
+    background: var(--bg-deep);
+    cursor: crosshair;
+    touch-action: none;
+  }
+
+  .latent-nav__plane canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .latent-nav__marker {
+    position: absolute;
+    /* Matches the JS home node (4,3) so the marker does not jump on init. */
+    top: 42.86%;
+    left: 44.44%;
+    width: 18px;
+    height: 18px;
+    margin: -9px;
+    pointer-events: none;
+  }
+
+  .latent-nav__marker::before,
+  .latent-nav__marker::after {
+    content: '';
+    position: absolute;
+    background: var(--accent-light);
+    top: 50%;
+    left: 50%;
+  }
+
+  .latent-nav__marker::before {
+    width: 1px;
+    height: 100%;
+    transform: translate(-50%, -50%);
+  }
+
+  .latent-nav__marker::after {
+    width: 100%;
+    height: 1px;
+    transform: translate(-50%, -50%);
+  }
+
+  .latent-nav__readout {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-size: var(--fs-mono-sm);
+  }
+
+  .latent-nav__readout div {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding-block: var(--space-1);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .latent-nav__readout dt {
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+  }
+
+  .latent-nav__readout dd {
+    color: var(--accent-light);
+  }
+
+  .latent-nav__caption {
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    max-width: 42ch;
+  }
+
+  .latent-nav__keys {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    font-size: var(--fs-mono-sm);
+    color: var(--text-muted);
+  }
+
+  .latent-nav__keys span {
+    border: 1px solid var(--border);
+    padding: 2px var(--space-2);
+  }
+
+  /* Phones and small tablets — map beside the readout so the block still fits
+     a single screen without the viewer shrinking to a thumbnail. */
+  @media (max-width: 799px) {
+    .latent-nav {
+      --lv-size: min(82vw, 42vh);
+    }
+
+    .latent-nav__panel {
+      width: min(100%, 420px);
+      display: grid;
+      grid-template-columns: minmax(120px, 148px) 1fr;
+      column-gap: var(--space-5);
+      row-gap: var(--space-4);
+      align-items: start;
+    }
+
+    .latent-nav__panel-title,
+    .latent-nav__caption,
+    .latent-nav__keys {
+      grid-column: 1 / -1;
+    }
+
+    .latent-nav__caption {
+      max-width: none;
+    }
+
+    .latent-nav__readout dt,
+    .latent-nav__readout dd {
+      white-space: nowrap;
+    }
+  }
+
+  /* Short phones — trade viewer size for a block that still fits one screen. */
+  @media (max-width: 799px) and (max-height: 700px) {
+    .latent-nav {
+      --lv-size: min(70vw, 40vh);
+    }
+
+    .latent-nav__panel-title {
+      display: none;
+    }
+  }
+
+  /* Tablet landscape up — panel beside the viewer. */
+  @media (min-width: 800px) {
+    .latent-nav {
+      --lv-size: clamp(200px, min(46vh, 40vw), 400px);
+      grid-template-columns: auto minmax(240px, 320px);
+      align-items: center;
+      justify-items: start;
+      justify-content: center;
+      gap: var(--space-8);
+    }
+
+    .latent-nav__viewer {
+      width: auto;
+    }
+  }
+
+  /* Short viewports — trim to what is load-bearing. */
+  @media (max-height: 800px) {
+    .latent-nav__caption {
+      display: none;
+    }
+  }
+
+  @media (max-height: 720px) and (min-width: 800px) {
+    .latent-nav {
+      --lv-size: clamp(200px, min(42vh, 36vw), 320px);
+      gap: var(--space-6);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .latent-nav__reticle,
+    .latent-nav__hint {
+      transition: none;
+    }
+  }
+</style>

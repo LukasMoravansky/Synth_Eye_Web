@@ -1,0 +1,165 @@
+---
+/* GUI Demo — signature moment A2 */
+---
+
+<section id="gui-demo" class="gui-demo section" aria-labelledby="gui-demo-heading" data-gui-demo>
+  <div class="container">
+    <h2 id="gui-demo-heading" data-reveal>See what the operator sees</h2>
+    <p class="gui-demo__lead" data-reveal>This is a simulation of the real Synth.Eye inspection interface. Click CAPTURE and ANALYZE to inspect a part.</p>
+
+    <div class="gui-app" data-reveal>
+      <div class="gui-card gui-card--camera">
+        <header class="gui-card__head"><h3>Camera View</h3></header>
+        <div class="gui-viewport" data-gui-viewport>
+          {/* Bez `data-inspectable` — kamera kreslí vlastní detekční boxy (gui-demo.js).
+              Inspection cursor by přes ně vykreslil druhou sadu boxů a druhý chip
+              pro tentýž objekt, v jiné barvě i jiném tvaru. Jedna scéna = jeden mluvčí. */}
+          <img data-gui-img src="/images/part-front.webp" alt="Idle camera view" width="800" height="600" />
+          <div class="gui-flash" data-gui-flash aria-hidden="true"></div>
+          <div class="gui-scanline" data-gui-scanline aria-hidden="true"></div>
+          <div class="gui-overlay" data-gui-overlay></div>
+          <div class="gui-measure" data-gui-measure hidden></div>
+          <div class="gui-verdict" data-gui-verdict hidden>OK</div>
+        </div>
+        <div class="gui-toolbar" role="toolbar" aria-label="Inspection controls">
+          <button type="button" class="gui-btn" data-btn-disconnect>DISCONNECT</button>
+          <button type="button" class="gui-btn" data-btn-capture>CAPTURE</button>
+          <button type="button" class="gui-btn" data-btn-analyze disabled>ANALYZE</button>
+          <button type="button" class="gui-btn" data-btn-measure disabled>MEASURE</button>
+          <button type="button" class="gui-btn" data-btn-clear>CLEAR</button>
+        </div>
+        <p class="gui-tooltip mono" data-gui-tooltip hidden role="status"></p>
+      </div>
+
+      <div class="gui-card gui-card--logger">
+        <header class="gui-card__head"><h3>System Logger</h3></header>
+        <div class="gui-logger mono" data-gui-logger aria-live="polite"></div>
+        <div class="gui-stats mono">
+          <span>Total Logs: <strong data-stat-total>0</strong></span>
+          <span>OK: <strong data-stat-ok>0</strong></span>
+          <span>NOK: <strong data-stat-nok>0</strong></span>
+        </div>
+      </div>
+
+      <div class="gui-card gui-card--info">
+        <div class="gui-info-row mono"><span>Camera</span><span>Basler acA1920-40uc</span></div>
+        <div class="gui-info-row mono"><span>Resolution</span><span>1600×1200</span></div>
+        <div class="gui-info-row mono"><span>Last Update</span><span data-last-update>—</span></div>
+        <div class="gui-info-row mono"><span>System</span><span>Synth.Eye AI</span></div>
+      </div>
+
+      <div class="gui-card gui-card--graph">
+        <header class="gui-card__head"><h3>Productivity Graph</h3><span class="mono" data-graph-count>0</span></header>
+        <svg viewBox="0 0 300 80" class="gui-graph" aria-hidden="true">
+          <path data-graph-path d="M 0 80" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+        </svg>
+      </div>
+    </div>
+
+    <p class="gui-demo__repo mono">
+      <a href="https://github.com/rparak/Synth_Eye" target="_blank" rel="noopener noreferrer">github.com/rparak/Synth_Eye<span class="sr-only"> (opens in new tab)</span></a>
+    </p>
+  </div>
+</section>
+
+<script>
+  import { whenVisible } from '../scripts/lib/lazy-init.js';
+  whenVisible('[data-gui-demo]', () => import('../scripts/gui-demo.js'));
+</script>
+
+<style>
+  .gui-demo { background: var(--bg-elevated); }
+  .gui-demo h2 { margin-bottom: var(--space-4); }
+  .gui-demo__lead { margin-bottom: var(--space-8); color: var(--text-secondary); }
+  .gui-app {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    grid-template-rows: auto auto;
+    gap: var(--space-5);
+  }
+  /* min-width: 0 — grid item se bez toho nesmrskne pod min-content šířku svého
+     obsahu (nezlomitelný head + toolbar) a přetéká celou stránku na mobilu. */
+  .gui-card { background: var(--bg-surface); border: 1px solid var(--border); padding: var(--space-4); border-radius: var(--radius-md); min-width: 0; }
+  .gui-card__head { flex-wrap: wrap; gap: var(--space-2); }
+  .gui-card--camera { grid-column: 1; grid-row: 1 / 3; }
+  .gui-card--logger { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; min-height: 280px; }
+  .gui-card--info { grid-column: 1; grid-row: 3; display: grid; gap: var(--space-2); }
+  .gui-card--graph { grid-column: 2; grid-row: 2; }
+  .gui-card__head { display: flex; justify-content: space-between; margin-bottom: var(--space-3); }
+  .gui-card__head h3 { font-size: 1rem; font-weight: 600; margin: 0; }
+  .gui-viewport { position: relative; background: var(--bg-deep); aspect-ratio: 4/3; overflow: hidden; border-radius: var(--radius-sm); }
+  .gui-viewport img { width: 100%; height: 100%; object-fit: contain; }
+  .gui-defect-overlay {
+    position: absolute; inset: 20% 25%;
+    background: radial-gradient(ellipse at 50% 55%, rgba(239,68,68,0.35), transparent 65%);
+    mix-blend-mode: multiply;
+    pointer-events: none;
+  }
+  .gui-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+  .gui-flash.is-active { opacity: 0.7; transition: opacity 90ms ease-out; }
+  .gui-scanline { position: absolute; left: 0; right: 0; height: 2px; background: var(--accent); box-shadow: 0 0 8px var(--accent); top: 0; pointer-events: none; }
+  .gui-overlay { position: absolute; inset: 0; pointer-events: none; }
+  /* Chip detekce — stejný typografický základ jako u inspection cursoru
+     (10px mono, tracking 0.04em, tmavé plátno, barevná levá hrana). Liší se
+     jen barvou a umístěním: verdikt stroje je uvnitř boxu, sonda uživatele
+     popisuje zvenčí. */
+  .gui-box { position: absolute; border: 1px solid var(--ok); color: var(--ok); }
+  .gui-box--defect { border-color: var(--nok); color: var(--nok); }
+  .gui-box span {
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+    padding: 1px 5px;
+    background: rgba(8, 8, 12, 0.88);
+    border-left: 1px solid currentColor;
+    white-space: nowrap;
+  }
+  .gui-verdict { position: absolute; bottom: var(--space-3); right: var(--space-3); font-family: var(--font-mono); font-weight: 700; padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); }
+  .gui-verdict--ok { background: var(--ok-glow); color: var(--ok); }
+  .gui-verdict--nok { background: var(--nok-glow); color: var(--nok); }
+  .gui-measure { position: absolute; inset: 0; pointer-events: none; }
+  .gui-dim { position: absolute; font-size: 10px; color: var(--accent); background: rgba(0,0,0,0.6); padding: 2px 4px; }
+  .gui-dim:nth-child(1) { top: 10%; left: 5%; }
+  .gui-dim:nth-child(2) { top: 10%; right: 5%; }
+  .gui-dim:nth-child(3) { bottom: 30%; left: 20%; }
+  .gui-dim:nth-child(4) { bottom: 20%; right: 15%; }
+  .gui-toolbar { display: flex; gap: var(--space-2); margin-top: var(--space-4); overflow-x: auto; }
+  .gui-btn {
+    flex: 1; min-width: 80px; height: 44px;
+    background: var(--bg-elevated); border: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em;
+    cursor: pointer; border-radius: var(--radius-sm);
+  }
+  .gui-btn:hover:not(:disabled) { border-color: var(--border-hover); color: var(--accent-light); }
+  .gui-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .gui-logger { flex: 1; overflow-y: auto; font-size: 11px; color: var(--text-secondary); max-height: 200px; }
+  .log-ts { color: var(--text-muted); }
+  .gui-stats { display: flex; gap: var(--space-4); margin-top: var(--space-3); font-size: 11px; color: var(--text-muted); }
+  .gui-info-row { display: flex; justify-content: space-between; font-size: 11px; }
+  .gui-info-row span:first-child { color: var(--text-muted); }
+  .gui-graph { width: 100%; height: 80px; }
+  .gui-tooltip { font-size: 11px; color: var(--accent); margin-top: var(--space-2); }
+  .gui-demo__repo { margin-top: var(--space-6); font-size: var(--fs-mono-sm); }
+  @media (max-width: 1024px) {
+    .gui-app { grid-template-columns: 1fr 1fr; }
+    .gui-card--camera { grid-column: 1 / -1; grid-row: auto; }
+    .gui-card--logger,
+    .gui-card--graph,
+    .gui-card--info {
+      grid-column: 1;
+      grid-row: auto;
+    }
+  }
+  @media (max-width: 768px) {
+    .gui-app { grid-template-columns: 1fr; }
+    .gui-card--logger,
+    .gui-card--graph,
+    .gui-card--info {
+      grid-column: 1;
+      grid-row: auto;
+    }
+  }
+</style>

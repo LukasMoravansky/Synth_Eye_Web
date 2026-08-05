@@ -1,0 +1,321 @@
+---
+import Picture from './Picture.astro';
+---
+
+<section id="hero" class="hero section" aria-labelledby="hero-heading" data-hero-chamber>
+  <div class="hero__inner">
+    <header class="hero__header">
+      <h1 id="hero-heading">
+        <span class="hero__line">Train on synthetic.</span>
+        <span class="hero__line hero__line--decode" data-decode-text>Deploy on real.</span>
+      </h1>
+      <p class="hero__metric mono">
+        <span data-counter="99.15" data-decimals="2" data-prefix="" data-suffix="">99.15</span>
+        <span class="hero__metric-rest"> % accuracy — zero real labels</span>
+      </p>
+    </header>
+
+    <div class="hero__stage viewfinder" data-hero-stage>
+      <div class="hero__part-wrap" data-hero-part>
+        <Picture
+          slug="part-hero"
+          alt="Metallic inspection part under chamber lighting"
+          loading="eager"
+          fetchpriority="high"
+          inspectable
+          label="Cls_Obj_Front_Side"
+          confidence={99.15}
+          box="21,17.5,43,65"
+          class="hero__part-img"
+        />
+        <div class="hero__beam" data-hero-beam aria-hidden="true"></div>
+      </div>
+
+      <!-- Fragmenty leží v tmavých pásech NAD, POD a po stranách dílu — nikdy na kovu.
+           Dlouhé hodnoty jdou do horního/dolního pásu (plná šířka stage),
+           krátké do úzkých bočních sloupků. Pravá strana je ukotvená zprava,
+           takže nemůže přetéct viewport. -->
+      <div class="hero__hud" data-hero-hud aria-hidden="true">
+        <div class="hero__hud-item hero__hud-item--l" style="--x:0;--y:0">
+          <span class="hero__hud-key">class</span><span class="hero__hud-val">Cls_Obj_Front_Side 99.15 %</span>
+        </div>
+        <div class="hero__hud-item hero__hud-item--c hero__hud-item--opt" style="--y:0">
+          <span class="hero__hud-key">model</span><span class="hero__hud-val">front.pkl</span>
+        </div>
+        <div class="hero__hud-item hero__hud-item--r" style="--r:0;--y:0">
+          <span class="hero__hud-key">res</span><span class="hero__hud-val">1920×1200</span>
+        </div>
+        <div class="hero__hud-item hero__hud-item--l" style="--x:0;--b:0">
+          <!-- reálná pozice dílu ve zdrojovém 1920×1200 snímku, ne vymyšlená čísla -->
+          <span class="hero__hud-key">bbox</span><span class="hero__hud-val">[1145, 335, 422, 640]</span>
+        </div>
+        <div class="hero__hud-item hero__hud-item--c hero__hud-item--opt" style="--b:0">
+          <span class="hero__hud-key">latency</span><span class="hero__hud-val">38 ms</span>
+        </div>
+        <div class="hero__hud-item hero__hud-item--r" style="--r:0;--b:0">
+          <span class="hero__hud-key">defect</span><span class="hero__hud-val">Cls_Fingerprint 92.93 %</span>
+        </div>
+      </div>
+
+      <div class="hero__glow" aria-hidden="true"></div>
+    </div>
+
+    <button type="button" class="hero__cta mono" data-hero-cta>
+      See it in action <span aria-hidden="true">↓</span>
+    </button>
+  </div>
+
+  <div class="hero__badge mono">
+    MIT License · INTEMAC · JIC · Open Source
+  </div>
+</section>
+
+<script>
+  import { whenVisible } from '../scripts/lib/lazy-init.js';
+  whenVisible('[data-hero-chamber]', () => import('../scripts/hero-chamber.js'));
+</script>
+
+<style>
+  .hero {
+    min-height: 100svh;
+    background: var(--bg-deep);
+    display: flex;
+    flex-direction: column;
+    padding-block: calc(var(--section-py) + 60px) var(--space-8);
+    position: relative;
+  }
+  .hero__inner {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1.1fr;
+    gap: var(--space-7);
+    align-items: center;
+    max-width: var(--content-max);
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+    width: 100%;
+  }
+  .hero__header {
+    align-self: start;
+    padding-top: var(--space-8);
+  }
+  .hero__line {
+    display: block;
+  }
+  .hero__metric {
+    margin-top: var(--space-6);
+    font-size: var(--fs-mono-md);
+    color: var(--text-secondary);
+  }
+  .hero__metric [data-counter] {
+    color: var(--accent);
+    font-size: 1.25rem;
+  }
+  .hero__stage {
+    position: relative;
+    perspective: 1200px;
+    /* Padding vytváří tmavé pásy nad/pod a po stranách dílu — obytný prostor
+       pro HUD fragmenty. Bez něj stage == díl a fragmenty nemají kam jít. */
+    padding: clamp(52px, 9%, 84px) 0;
+  }
+  .hero__part-wrap {
+    position: relative;
+    transform-style: preserve-3d;
+    will-change: transform;
+    /* Zdrojový crop je kvadratický (980×980) — cap drží hero v jednom viewportu
+       a nechává kolem dílu tmavý pruh pro HUD fragmenty. */
+    max-width: min(100%, 54svh);
+    margin-inline: auto;
+  }
+  /* Pozadí fotky je šedé, ne #08080c. Radiální mask musí být 0 % už NA HRANĚ boxu,
+     jinak zůstane viditelný světlý rámec (dřív 72 %/52 % → hrana ~64 % opacity).
+     Poloměr 50 % = přesně půlka boxu; díl sahá do 66 %, takže zůstává plně krytý. */
+  .hero__part-wrap :global(.hero__part-img) {
+    background-color: transparent;
+    -webkit-mask-image: radial-gradient(50% 50% at 50% 50%, #000 70%, transparent 100%);
+    mask-image: radial-gradient(50% 50% at 50% 50%, #000 70%, transparent 100%);
+  }
+  /* Kov proti šedému pozadí fotky potřebuje separaci — jinak celek čte jako mlha. */
+  .hero__part-wrap :global(.hero__part-img img) {
+    filter: contrast(1.14) brightness(0.94) saturate(0.9);
+  }
+  .hero__beam {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(
+      circle 200px at var(--bx, 50%) var(--by, 50%),
+      rgba(240, 238, 255, 0.3),
+      rgba(123, 110, 246, 0.14) 45%,
+      transparent 72%
+    );
+    mix-blend-mode: screen;
+    transition: opacity 0.2s;
+    /* stejná maska jako fotka — jinak paprsek u kraje odhalí obdélník */
+    -webkit-mask-image: radial-gradient(50% 50% at 50% 50%, #000 70%, transparent 100%);
+    mask-image: radial-gradient(50% 50% at 50% 50%, #000 70%, transparent 100%);
+  }
+  .hero__part-wrap:hover .hero__beam,
+  .hero__part-wrap.is-active .hero__beam {
+    opacity: 1;
+  }
+  .hero__hud {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    /* odsazení od viewfinder rohů stage (::before/::after), aby do nich text nenarážel */
+    padding: 8px 30px;
+  }
+  .hero__hud-item {
+    position: absolute;
+    top: var(--y, auto);
+    bottom: var(--b, auto);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    opacity: 0;
+    animation: hud-in 0.5s var(--ease-out) forwards;
+    animation-delay: calc(var(--i, 0) * 0.12s + 0.4s);
+  }
+  .hero__hud-item--l {
+    left: var(--x);
+  }
+  .hero__hud-item--r {
+    right: var(--r);
+    text-align: right;
+    align-items: flex-end;
+  }
+  .hero__hud-item--c {
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    align-items: center;
+  }
+  /* Prostřední fragment padá první, když se pás zúží. */
+  @media (max-width: 1199px) {
+    .hero__hud-item--opt { display: none; }
+  }
+  .hero__hud-key {
+    color: var(--text-muted);
+    opacity: 0.7;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 9px;
+  }
+  /* Hodnoty musí být čitelné, ne dekorace — o stupeň světlejší než labely. */
+  .hero__hud-val {
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+  .hero__hud-item:nth-child(1) { --i: 0; }
+  .hero__hud-item:nth-child(2) { --i: 1; }
+  .hero__hud-item:nth-child(3) { --i: 2; }
+  .hero__hud-item:nth-child(4) { --i: 3; }
+  .hero__hud-item:nth-child(5) { --i: 4; }
+  .hero__hud-item:nth-child(6) { --i: 5; }
+  @keyframes hud-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 0.85; transform: none; }
+  }
+  .hero__glow {
+    position: absolute;
+    bottom: -20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70%;
+    height: 40%;
+    background: var(--accent-glow);
+    filter: blur(60px);
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  .hero__cta {
+    grid-column: 1;
+    align-self: end;
+    justify-self: start;
+    text-align: left;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: var(--fs-mono-sm);
+    color: var(--text-muted);
+    padding: var(--space-4) 0;
+  }
+  .hero__cta span {
+    display: inline-block;
+    animation: bounce 2s ease-in-out infinite;
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(4px); }
+  }
+  .hero__badge {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: var(--space-5);
+    letter-spacing: 0.06em;
+  }
+  /* Nízké landscape viewporty (1440×900, 1024×768): hero se musí vejít do jedné
+     obrazovky včetně badge pruhu. */
+  @media (min-width: 769px) and (max-height: 960px) {
+    .hero {
+      padding-block: calc(var(--section-py) * 0.45 + 60px) var(--space-4);
+    }
+    .hero__header { padding-top: 0; }
+    .hero__badge { padding: var(--space-3); }
+    .hero__stage { padding-block: clamp(36px, 7%, 76px); }
+  }
+
+  @media (max-width: 768px) {
+    .hero__inner {
+      grid-template-columns: 1fr;
+      gap: var(--space-6);
+    }
+    .hero__header { order: 1; padding-top: 0; }
+    /* HUD je tu statický pruh pod dílem → pásy nad/pod dílem nejsou potřeba */
+    .hero__stage { order: 2; padding: 0; }
+    .hero__cta { order: 3; grid-column: 1; }
+    .hero__part-wrap {
+      /* menší díl, aby CTA zůstalo nad foldem i na 844px vysokém telefonu */
+      max-width: min(100%, 28svh);
+    }
+    .hero__badge { padding: var(--space-4); }
+    /* Na mobilu není po stranách místo — HUD se stane kompaktním datovým
+       pruhem pod dílem místo overlaye, kde se fragmenty překrývaly. */
+    .hero__hud {
+      position: static;
+      /* 2×2 grid, ne flex-wrap — ten dělal roztřepané řádky */
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-4) var(--space-5);
+      padding: 0;
+      margin-top: var(--space-5);
+    }
+    .hero__hud-item {
+      position: static;
+      max-width: none;
+      text-align: left;
+      align-items: flex-start;
+    }
+    /* 10px: „Cls_Obj_Front_Side 99.15 %" se do sloupce vejde na jeden řádek
+       místo osiřelého „%" na druhém */
+    .hero__hud-val { font-size: 10px; }
+    /* Osamocené viewfinder rohy stage jsou tu daleko od dílu a čtou se jako
+       omyl — světelný kužel objekt rámuje sám. */
+    .hero__stage.viewfinder::before,
+    .hero__stage.viewfinder::after { display: none; }
+    .hero__hud-item--r { text-align: left; align-items: flex-start; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero__hud-item { opacity: 0.85; animation: none; }
+    .hero__cta span { animation: none; }
+  }
+</style>

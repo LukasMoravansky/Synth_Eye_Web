@@ -1,0 +1,104 @@
+---
+import Picture from './Picture.astro';
+---
+
+<section id="blender" class="pipeline-blender section" aria-labelledby="blender-heading" data-defect-revealer-section>
+  <div class="container">
+    <h2 id="blender-heading" data-reveal>First principles: physical simulation</h2>
+
+    <div class="blender-grid">
+      <div class="blender-scheme viewfinder" data-reveal-group>
+        <Picture slug="scheme-hw" alt="Hardware virtualization scheme" loading="lazy" class="blender-scheme__img" />
+        <ul class="blender-annotations mono" aria-hidden="true">
+          <li><span>camera</span> Basler acA1920-40uc</li>
+          <li><span>lens</span> 16 mm · f/4.0</li>
+          <li><span>lighting</span> diffuse dome + directional</li>
+          <li><span>material</span> PBR · brushed aluminium</li>
+          <li><span>renderer</span> Cycles · 512 samples</li>
+        </ul>
+      </div>
+
+      <div class="blender-output" data-reveal>
+        <Picture slug="pbr-render" alt="PBR render output" loading="lazy" inspectable label="Cls_Obj_Front_Side" confidence={99.15} />
+        <blockquote class="blender-quote">
+          We virtualize the entire inspection chamber — camera, lens, lighting, materials.
+          Physical rendering in Blender produces images indistinguishable from reality.
+        </blockquote>
+      </div>
+    </div>
+
+    <div class="revealer-wrap" data-defect-revealer tabindex="0" role="group" aria-label="Interactive defect revealer: move cursor to reveal hidden fingerprint defect under UV-style lighting">
+      <p class="sr-only">Clean metallic part with hidden fingerprint defect. Use pointer or arrow keys to reveal defects.</p>
+      <div class="revealer">
+        <div class="revealer__defect">
+          <Picture slug="part-front" alt="" loading="lazy" />
+          <div class="revealer__defect-overlay" aria-hidden="true">
+            <svg width="100%" height="100%" preserveAspectRatio="none">
+              <defs>
+                <filter id="fp-noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3"/><feColorMatrix values="0 0 0 0 0.9 0 0 0 0 0.2 0 0 0 0 0.2 0 0 0 0.4 0"/></filter>
+              </defs>
+              <ellipse cx="48%" cy="52%" rx="18%" ry="14%" filter="url(#fp-noise)" opacity="0.5"/>
+              <ellipse cx="35%" cy="40%" rx="8%" ry="6%" fill="rgba(80,60,40,0.2)" style="mix-blend-mode:overlay"/>
+            </svg>
+          </div>
+        </div>
+        <div class="revealer__clean" data-revealer-clean>
+          <Picture
+            slug="part-front"
+            alt="Clean part for defect revealer"
+            loading="lazy"
+            inspectable
+            label="Cls_Obj_Front_Side"
+            confidence={93.15}
+            box="59.6,27.9,22.2,53.4"
+            defectLabel="Cls_Defect_Fingerprint"
+            defectConfidence={92.93}
+            defects="60.3,29.1,7.7,23.3;73.1,34.4,5.1,15.0"
+          />
+        </div>
+        <div class="revealer__ring" data-revealer-ring aria-hidden="true"></div>
+      </div>
+      <p class="revealer-caption mono">Can you spot the defect? The AI can. Every time.</p>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { whenVisible } from '../scripts/lib/lazy-init.js';
+  whenVisible('[data-defect-revealer-section]', () => import('../scripts/defect-revealer.js'));
+</script>
+
+<style>
+  .pipeline-blender { background: var(--bg-elevated); }
+  .pipeline-blender h2 { margin-bottom: var(--space-8); }
+  /* fr, ne %: 45%+55%+gap = 100% + gap → horizontální overflow celé stránky */
+  .blender-grid { display: grid; grid-template-columns: 45fr 55fr; gap: var(--space-7); margin-bottom: var(--space-10); }
+  .blender-scheme { background: var(--bg-surface); border: 1px solid var(--border); padding: var(--space-5); position: relative; }
+  .blender-annotations { list-style: none; margin-top: var(--space-4); font-size: 11px; color: var(--text-muted); }
+  .blender-annotations li { margin-bottom: var(--space-2); }
+  .blender-annotations span { color: var(--text-secondary); margin-right: var(--space-2); }
+  .blender-quote { margin-top: var(--space-5); font-size: 1.1rem; color: var(--text-secondary); border-left: 2px solid var(--accent); padding-left: var(--space-5); font-style: italic; }
+  .revealer-wrap { max-width: 720px; margin-inline: auto; }
+  .revealer { position: relative; aspect-ratio: 4/3; overflow: hidden; background: var(--bg-deep); }
+  .revealer__defect, .revealer__clean { position: absolute; inset: 0; }
+  .revealer__defect-overlay { position: absolute; inset: 0; pointer-events: none; }
+  .revealer__clean { clip-path: circle(0px at 50% 50%); }
+  .revealer__ring {
+    position: absolute;
+    width: 200px; height: 200px;
+    margin: -100px 0 0 -100px;
+    border: 1px solid rgba(123,110,246,0.4);
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+  }
+  .revealer__ring::before, .revealer__ring::after {
+    content: ''; position: absolute; background: var(--accent); opacity: 0.5;
+  }
+  .revealer__ring::before { width: 1px; height: 12px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+  .revealer__ring::after { width: 12px; height: 1px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+  .revealer-caption { text-align: center; margin-top: var(--space-4); font-size: var(--fs-mono-sm); color: var(--text-muted); }
+  @media (max-width: 768px) {
+    .blender-grid { grid-template-columns: 1fr; }
+  }
+</style>

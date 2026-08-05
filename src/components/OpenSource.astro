@@ -1,0 +1,100 @@
+---
+/* Open Source bento grid — zero JS */
+---
+
+<section id="open-source" class="open-source section" aria-labelledby="open-source-heading">
+  <div class="container">
+    <h2 id="open-source-heading" data-reveal>Everything is open</h2>
+    <p class="open-source__lead" data-reveal>Everything is open. Models, data, code. Fork it, train it, deploy it.</p>
+
+    <div class="bento" data-reveal-group>
+      <a href="https://github.com/rparak/Synth_Eye" class="bento__card bento__card--wide viewfinder" target="_blank" rel="noopener noreferrer">
+        <h3>Synth.Eye (Blender)</h3>
+        <p>PBR rendering pipeline with procedural defect generation for industrial parts.</p>
+        <span class="bento__link mono">github.com/rparak/Synth_Eye</span>
+        <span class="sr-only"> (opens in new tab)</span>
+      </a>
+
+      <a href="https://github.com/LukasMoravansky/Synth_Eye_GAN" class="bento__card bento__card--wide viewfinder" target="_blank" rel="noopener noreferrer">
+        <h3>Synth.Eye GAN</h3>
+        <p>StyleGAN2-ADA compositing, YOLO training, and PyQt5 inspection application.</p>
+        <span class="bento__link mono">github.com/LukasMoravansky/Synth_Eye_GAN</span>
+        <span class="sr-only"> (opens in new tab)</span>
+      </a>
+
+      <a href="https://huggingface.co/LukasMoravansky/Synth-Eye-GAN" class="bento__card" target="_blank" rel="noopener noreferrer">
+        <h3>Models on HuggingFace</h3>
+        <ul class="mono bento__meta">
+          <li>front.pkl · <span data-pending>—</span></li>
+          <li>back.pkl · <span data-pending>—</span></li>
+          <li>fingerprint.pkl · <span data-pending>—</span></li>
+        </ul>
+        <span class="bento__hf mono">HF</span>
+        <span class="sr-only"> (opens in new tab)</span>
+      </a>
+
+      <!-- TODO: konkrétní dataset repo zatím není — míří na HF profil, ne na GitHub -->
+      <a href="https://huggingface.co/LukasMoravansky" class="bento__card" data-pending target="_blank" rel="noopener noreferrer">
+        <h3>Dataset on HuggingFace</h3>
+        <ul class="mono bento__meta">
+          <li>images · <span data-pending>—</span></li>
+          <li>splits · <span data-pending>—</span></li>
+          <li>format · <span data-pending>—</span></li>
+        </ul>
+        <span class="sr-only"> (opens in new tab)</span>
+      </a>
+
+      <a href="https://github.com/LukasMoravansky/stylegan2-ada-pytorch" class="bento__card" target="_blank" rel="noopener noreferrer">
+        <h3>StyleGAN2-ADA fork</h3>
+        <p>PyTorch implementation used for Synth.Eye GAN training.</p>
+        <span class="bento__link mono">stylegan2-ada-pytorch</span>
+        <span class="sr-only"> (opens in new tab)</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .open-source { background: var(--bg-primary); }
+  .open-source h2 { margin-bottom: var(--space-4); }
+  .open-source__lead { margin-bottom: var(--space-8); color: var(--text-secondary); }
+  .bento {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-areas:
+      "blender blender gan gan"
+      "hf dataset stylegan stylegan";
+    gap: var(--space-5);
+  }
+  .bento__card:nth-child(1) { grid-area: blender; }
+  .bento__card:nth-child(2) { grid-area: gan; }
+  .bento__card:nth-child(3) { grid-area: hf; }
+  .bento__card:nth-child(4) { grid-area: dataset; }
+  .bento__card:nth-child(5) { grid-area: stylegan; }
+  .bento__card {
+    display: block;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    padding: var(--space-6);
+    color: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    border-radius: var(--radius-md);
+    min-height: 160px;
+  }
+  .bento__card:hover, .bento__card:focus-visible {
+    border-color: var(--border-hover);
+    box-shadow: inset 0 0 40px var(--accent-glow);
+    color: inherit;
+  }
+  .bento__card h3 { font-size: 1.1rem; margin-bottom: var(--space-3); }
+  .bento__card p { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: var(--space-4); }
+  .bento__link, .bento__meta { font-size: 11px; color: var(--text-muted); }
+  .bento__meta { list-style: none; }
+  .bento__hf { display: inline-block; border: 1px solid var(--border); padding: 2px 6px; margin-top: var(--space-3); }
+  [data-pending] span { color: var(--text-muted); }
+  @media (max-width: 900px) {
+    .bento { grid-template-columns: 1fr 1fr; grid-template-areas: unset; }
+    .bento__card { grid-area: unset !important; }
+  }
+  @media (max-width: 600px) { .bento { grid-template-columns: 1fr; } }
+</style>

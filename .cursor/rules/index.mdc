@@ -1,0 +1,79 @@
+---
+description: Globální pravidla pro Synth.Eye Web — platí vždy, pro každý edit v projektu
+globs: ["src/**/*"]
+alwaysApply: true
+---
+
+# Synth.Eye Web — globální pravidla
+
+Prezentační web (Astro, statický, zero-JS default) pro Synth.Eye — platforma pro syntetická data
+v průmyslové vizuální inspekci. Tmavé téma, fialový accent, monospace pro data. Žádný framework
+(React/Vue/Svelte), žádný Tailwind, žádný CMS.
+
+## Astro konvence
+
+- Statické sekce (`src/components/*.astro`) obsahují jen markup + scoped `<style>`. Žádné `<script>`
+  v komponentě, pokud sekce nemá vlastní interaktivitu.
+- Interaktivní logika žije výhradně v `src/scripts/*.js` (vanilla JS, jeden soubor na interaktivní
+  prvek) a importuje se z komponenty přes `<script>` (Astro ho bundluje a scope-uje automaticky —
+  to je žádoucí, NEPOUŽÍVEJ `is:inline` pokud nepotřebuješ skript spustit před hydratací/bundlingem).
+- `is:inline` použij jen když skript musí běžet přesně tak, jak je napsaný (žádný bundling,
+  žádný module scope) — např. kritický no-FOUC snippet v `<head>`.
+- Žádné `client:*` direktivy — v projektu není žádný UI framework, který by potřeboval hydrataci.
+- Lazy-load těžké interaktivní skripty (GUI demo, particle transition, latent navigator,
+  compositing deck) přes `IntersectionObserver`/`ScrollTrigger` — inicializuj až když je sekce
+  viditelná, ne při page load.
+
+## CSS pravidla
+
+- VŽDY používej CSS custom properties z `src/styles/tokens.css` (`--bg-deep`, `--bg-primary`,
+  `--bg-elevated`, `--bg-surface`, `--text-primary`, `--text-secondary`, `--text-muted`, `--accent`,
+  `--accent-light`, `--accent-glow`, `--ok`, `--nok`, `--border`, `--border-hover`, `--glass`).
+  NIKDY nehardcoduj hex/rgba barvy nebo spacing hodnoty přímo v komponentě.
+- Animuj POUZE `transform` a `opacity` (GPU-friendly, no layout/paint invalidation). Cokoliv jiného
+  (`width`, `height`, `top`, `left`, `box-shadow` bez `will-change`) je červená vlajka v code review.
+- Žádný `!important` s výjimkou `prefers-reduced-motion` override bloku.
+- Žádný `border-radius: 8px` plošně na všem — viz MUSÍ/NESMÍ pravidla v konceptu (žádný generic
+  rounded-corner look).
+- Fonty: Clash Display (headings), Satoshi/Outfit (body), JetBrains Mono (data/metriky/timestampy,
+  `tabular-nums`). Self-hosted z `src/styles/fonts.css`. Nikdy Inter/Roboto/Poppins/Open
+  Sans/Montserrat jako primární font.
+
+## JS pravidla
+
+- Vanilla JS only. Žádný React/Vue/Svelte, žádný state management framework.
+- GSAP + ScrollTrigger pro komplexní/scroll-driven animace. CSS transitions jsou OK pro jednoduché
+  hover/focus stavy, ne pro orchestrované sekvence.
+- Každý skript s animací MUSÍ respektovat `prefers-reduced-motion: reduce` — buď statická
+  alternativa, nebo úplné vypnutí pohybu.
+- Touch detekce (`'ontouchstart' in window` nebo `matchMedia('(pointer: coarse)')`) deaktivuje těžké
+  efekty (particle physics, continuous cursor tracking) na mobilu/touch zařízeních.
+- `requestAnimationFrame` s throttle pro particle systémy a cursor tracking — nikdy neomezený
+  `mousemove`/`scroll` listener bez throttle.
+- Animace/výpočty mimo viewport MUSÍ být pozastavené (`IntersectionObserver` nebo ScrollTrigger
+  `onEnter`/`onLeave`), ne běžet na pozadí.
+
+## Performance
+
+- Lazy loading obrázků (`loading="lazy"` mimo above-the-fold, `fetchpriority="high"` na LCP obrázku).
+- Celkový JS budget webu je pod **50 KB gzipped** (GSAP+ScrollTrigger ~30 KB, Lenis ~5 KB, custom
+  logika 8–15 KB). Každá nová dependence tento budget ohrožuje — neimportuj knihovny bez rozvahy.
+- Obrázky v AVIF→WebP→PNG fallback chain (`<Picture>` komponenta / `sharp`).
+
+## Accessibility
+
+- Semantic HTML (`<button>` ne `<div onclick>`, `<nav>`, `<section>`, heading hierarchie).
+- Focus states na všech interaktivních prvcích (`:focus-visible`, viditelný outline s `--accent`).
+- `aria-label` na dekorativních/informativních SVG ikonách podle kontextu.
+- Keyboard navigace funkční pro GUI demo a Compositing Deconstructor (ne jen mouse/touch).
+
+## Git konvence
+
+- Conventional commits: `fix:`, `feat:`, `perf:`, `a11y:`, `refactor:`, `docs:`.
+- Žádné commity s `console.log` nebo debug markery (`markers: true` v ScrollTrigger).
+
+## Debug workflow
+
+1. Nejdřív reprodukuj bug, pak identifikuj root cause, pak fixni. Netestuj jen happy path.
+2. Po opravě zkontroluj související komponenty — sdílené skripty (`scroll-setup.js`,
+   `inspection-cursor.js`) a globální CSS (`global.css`, `tokens.css`) mají cross-cutting dopad.

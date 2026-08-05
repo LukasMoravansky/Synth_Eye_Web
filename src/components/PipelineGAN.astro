@@ -1,0 +1,96 @@
+---
+import LatentNavigator from './LatentNavigator.astro';
+import CompositingDeck from './CompositingDeck.astro';
+import Picture from './Picture.astro';
+---
+
+<section id="gan" class="pipeline-gan section" aria-labelledby="gan-heading">
+  <div class="container">
+    <h2 id="gan-heading" data-reveal>Statistical learning: generative networks</h2>
+
+    <div class="gan-framing" data-reveal>
+      <p class="gan-quote">Blender says: <em>“I know exactly what reality looks like, and I will reconstruct it from scratch.”</em></p>
+      <p class="gan-quote">GAN says: <em>“Show me 130 examples and I will learn what they have in common — and generate thousands more.”</em></p>
+    </div>
+
+    <div class="gan-diagram" data-gan-diagram aria-hidden="true">
+      <svg viewBox="0 0 800 200" class="gan-diagram__svg">
+        <rect x="20" y="60" width="120" height="40" rx="2" fill="var(--bg-surface)" stroke="var(--border)"/>
+        <text x="80" y="85" text-anchor="middle" fill="var(--text-secondary)" font-size="11" font-family="monospace">front.pkl</text>
+        <rect x="20" y="120" width="120" height="40" rx="2" fill="var(--bg-surface)" stroke="var(--border)"/>
+        <text x="80" y="145" text-anchor="middle" fill="var(--text-secondary)" font-size="11" font-family="monospace">back.pkl</text>
+        <rect x="20" y="10" width="120" height="40" rx="2" fill="var(--bg-surface)" stroke="var(--border)"/>
+        <text x="80" y="35" text-anchor="middle" fill="var(--text-secondary)" font-size="11" font-family="monospace">fingerprint.pkl</text>
+        <path d="M140 80 L280 100" stroke="var(--accent)" stroke-width="1" fill="none" data-flow-path/>
+        <path d="M140 140 L280 110" stroke="var(--accent)" stroke-width="1" fill="none" data-flow-path/>
+        <path d="M140 30 L280 90" stroke="var(--accent)" stroke-width="1" fill="none" data-flow-path/>
+        <rect x="280" y="70" width="140" height="60" rx="2" fill="var(--bg-surface)" stroke="var(--border)"/>
+        <text x="350" y="105" text-anchor="middle" fill="var(--text-secondary)" font-size="11" font-family="monospace">compositor</text>
+        <path d="M420 100 L560 100" stroke="var(--accent)" stroke-width="1" fill="none" data-flow-path/>
+        <rect x="560" y="60" width="180" height="80" rx="2" fill="var(--bg-surface)" stroke="var(--border)"/>
+        <text x="650" y="95" text-anchor="middle" fill="var(--text-secondary)" font-size="10" font-family="monospace">alpha blend +</text>
+        <text x="650" y="110" text-anchor="middle" fill="var(--text-secondary)" font-size="10" font-family="monospace">pressure sim</text>
+        <path d="M740 100 L780 100" stroke="var(--accent)" stroke-width="1" fill="none" data-flow-path/>
+        <text x="790" y="105" fill="var(--accent)" font-size="11" font-family="monospace">YOLO</text>
+      </svg>
+      <p class="sr-only">StyleGAN2-ADA models front, back, fingerprint feed compositor producing labeled output.</p>
+    </div>
+
+    <Picture slug="scheme-gan" alt="GAN architecture reference" loading="lazy" class="gan-scheme-ref" />
+
+    <div class="gan-block">
+      <h3 class="gan-subhead" data-reveal>Latent space navigator</h3>
+      <LatentNavigator />
+    </div>
+
+    <div class="gan-block">
+      <h3 class="gan-subhead" data-reveal>Compositing: five layers into one label</h3>
+      <CompositingDeck />
+    </div>
+
+    <div class="gan-compare" data-reveal-group>
+      <article class="gan-card gan-card--blender">
+        <h4>Blender</h4>
+        <dl class="mono">
+          <div><dt>Speed</dt><dd>~seconds / frame</dd></div>
+          <div><dt>Input</dt><dd>CAD + physical setup</dd></div>
+          <div><dt>Control</dt><dd>Explicit (scene parameters)</dd></div>
+          <div><dt>Output</dt><dd>Deterministic</dd></div>
+        </dl>
+      </article>
+      <article class="gan-card gan-card--gan">
+        <h4>GAN</h4>
+        <dl class="mono">
+          <div><dt>Speed</dt><dd>~ms / frame</dd></div>
+          <div><dt>Input</dt><dd>~130 real photos</dd></div>
+          <div><dt>Control</dt><dd>Implicit (data distribution)</dd></div>
+          <div><dt>Output</dt><dd>Stochastic</dd></div>
+        </dl>
+      </article>
+    </div>
+  </div>
+</section>
+
+<style>
+  .pipeline-gan { background: var(--bg-primary); }
+  .pipeline-gan h2 { margin-bottom: var(--space-6); }
+  .gan-framing { margin-bottom: var(--space-8); color: var(--text-secondary); }
+  .gan-quote { margin-bottom: var(--space-4); max-width: 60ch; }
+  .gan-diagram__svg { width: 100%; height: auto; margin-block: var(--space-6); }
+  .gan-scheme-ref { max-width: 600px; margin: var(--space-6) auto; opacity: 0.7; }
+  .gan-subhead { font-size: var(--fs-h3); margin: 0 0 var(--space-5); }
+  .gan-block { margin-top: var(--space-10); }
+  /* Short viewports: the navigator block must still read as one screen. */
+  @media (max-height: 800px) {
+    .gan-block { margin-top: var(--space-8); }
+    .gan-subhead { margin-bottom: var(--space-4); }
+  }
+  .gan-compare { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); margin-top: var(--space-10); }
+  .gan-card { background: var(--bg-surface); border: 1px solid var(--border); padding: var(--space-6); transition: border-color 0.2s, box-shadow 0.2s; }
+  .gan-card:hover { border-color: var(--border-hover); box-shadow: 0 0 40px var(--accent-glow); }
+  .gan-card h4 { margin-bottom: var(--space-4); font-family: var(--font-display); }
+  .gan-card dl div { display: flex; justify-content: space-between; padding: var(--space-2) 0; border-bottom: 1px solid var(--border); font-size: var(--fs-mono-sm); }
+  .gan-card dt { color: var(--text-muted); }
+  .gan-card dd { color: var(--text-secondary); }
+  @media (max-width: 768px) { .gan-compare { grid-template-columns: 1fr; } }
+</style>

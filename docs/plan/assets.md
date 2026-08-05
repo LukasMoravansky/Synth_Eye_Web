@@ -22,28 +22,56 @@ Stav k datu vytvoření plánu: **2026-08-04**.
 | `context_images/measurement.png` | 537 KB | díl s kótami — front side | A8 |
 | `context_images/measurement_back.png` | 520 KB | díl s kótami — back side | A8 |
 | `context_images/industry.png` | 2.0 MB | industriální kontext / factory floor | A3 |
-| `context_images/Image_5.png` | 4.5 MB | velký render/foto dílu | A1 (hero kandidát) |
-| `Synth.Eye - html/Image_004.png` | 3.9 MB | snímek dílu z reálného GUI | A1 / A2 |
+| `context_images/Image_5.png` | 4.5 MB | ⚠️ **NENÍ foto dílu** — screenshot celého GUI (3838×2158, světlé pozadí). Nepoužitelné jako hero. | — (nepoužito) |
+| `Synth.Eye - html/Image_004.png` | 3.9 MB | **jediné reálné foto dílu** (1920×1200, tmavé pozadí, díl odsazený doprava) | A1 (hero, centrovaný crop) / A2 / A3 / A4 |
 
-**Poznámka:** `Image_5.png` (4.5 MB) a `Image_004.png` (3.9 MB) jsou pro web nepoužitelné
-v nativní velikosti — A0 je musí projít pipeline (resize na max 2400px delší strana + AVIF/WebP).
+**Poznámka:** `Image_004.png` (3.9 MB) je pro web nepoužitelné v nativní velikosti — prochází
+pipeline (`scripts/build-assets.mjs`: resize na max 2400px delší strana + AVIF/WebP).
+
+### 1.1 Hero asset — oprava 2026-08-05
+
+Původně byl hero (`part-hero`) omylem generován z `Image_5.png`, což je **screenshot GUI**, ne
+foto dílu — v inspekční komoře se tak renderoval světlý panel s Camera View a loggerem.
+Opraveno: `part-hero` se generuje z téhož `Image_004.png` jako `part-front`, ale s centrovaným
+cropem `{left: 939, top: 166, 980×980}` (bbox dílu ve zdroji je 1144,335 → 1713,977), takže díl
+sedí ve středu. Okraje fotky (šedé pozadí, ne `--bg-deep`) splývají s komorou přes radiální
+CSS mask v `Hero.astro`.
+
+**Otevřený bod:** díl na téhle jediné fotce **má na front side reálný fingerprint defekt**
+(hnědé residuum). Hero tedy neukazuje čistý díl. Pokud to má být „normál", potřebujeme render
+čistého dílu (viz prioritní dodávka). Alternativa bez nového assetu: crop jen back side (spodní
+polovina je čistá) — ztratíme ale čtení celého dílu.
 
 ---
 
 ## 2. Co chybí — a co s tím
 
-### 2.1 Párové snímky pro Defect Revealer (A4) — ❌ CHYBÍ
+### 2.1 Párové snímky clean / defected — ✅ DODÁNO 2026-08-05
 
-**Potřeba:** stejný díl, stejný úhel, stejné osvětlení, verze `clean` a `defected`.
+**Dodáno:** `part_clean.png` + `part_defected.png` v `.claude/context/context_images/`
+(1920×1200, stejný díl, stejná komora, stejné osvětlení; defekt = hnědé fingerprint residuum
+na horní polovině front side). Slugy `part-clean` / `part-defected`, oba se generují
+**společným cropem** `{left: 996, top: 184, 728×910}` — union bbox dílu je v obou snímcích
+1145,302 → 1575,976, takže crop drží pár registrovaný a snímky lze překrývat 1:1.
 
-**Degradace (implementuj, dokud pár nedorazí):**
-- Použij `Image_004.png` jako `clean` vrstvu.
-- Defektní vrstvu vytvoř jako **SVG/CSS overlay** nad clean snímkem: fingerprint residue jako
-  radiální `mask` s noise texturou v `--nok` odstínu, olejové skvrny jako blur elipsy.
-- Reveal kruh dostane silnější vinětaci a lehký `backdrop-filter: brightness(1.15) saturate(0.8)`,
-  aby efekt „UV lampy" fungoval i s syntetickým overlayem.
-- Interakční logika (`clip-path: circle()` sledující kurzor) je **identická** jako s reálným párem
-  → výměna assetu později je jednořádková změna `src`.
+- **A3 Data Gap blok 1** — nasazeno, syntetický `.defect-overlay` odstraněn.
+
+**Změřené detekce v `part-defected`** (v % rozměru cropu 728×910, ne odhad — segmentace
+hnědého residua `r > 90 && r-b > 28 && r-g > 10`, spojité komponenty, speckly sloučené
+podle vzdálenosti):
+
+| Detekce | Box `l,t,w,h` | Plocha |
+|---|---|---|
+| `Cls_Obj_Front_Side` (díl, prahování jasu > 110) | `20.5,16.6,58.7,70.4` | — |
+| `Cls_Defect_Fingerprint` #1 (vlevo od horního otvoru) | `22.1,18.1,20.2,30.8` | 16 848 px |
+| `Cls_Defect_Fingerprint` #2 (vpravo, rozstřelené) | `55.9,25.2,13.3,19.8` | 3 380 px |
+
+Tytéž nálezy přepočítané do necropnutého `part-front` (1920×1200) pro Defect Revealer:
+objekt `59.6,27.9,22.2,53.4`, defekty `60.3,29.1,7.7,23.3;73.1,34.4,5.1,15.0`.
+- **A4 Defect Revealer** — ⏳ stále běží na CSS overlayi nad `part-front`; výměna za reálný pár
+  je záměna dvou `slug` hodnot v `PipelineBlender.astro` + smazání `.revealer__defect-overlay`.
+- **Hero** — otevřený bod z §1.1 lze zavřít: `part-hero` může jít z `part_clean.png`
+  (centrovaný crop), takže hero přestane ukazovat defektní díl.
 
 ### 2.2 Snímky pro GUI Demo (A2) — ⚠️ 1 z 6–8
 
@@ -72,7 +100,11 @@ confidence score a sada log zpráv.
 - Vrstvu 4 jako vrstvu 1 + SVG bounding box overlay s monospace labelem.
 - Drag/z-index/spring fyzika je na assetech nezávislá → plná funkčnost i v degradovaném stavu.
 
-### 2.4 GAN výstupy pro Latent Space Navigator (A5) — ❌ CHYBÍ (0 z 50–100)
+### 2.4 GAN výstupy pro Latent Space Navigator (A5) — ✅ DOPLNĚNO (80 reálných snímků)
+
+`public/images/gan_generated/Image_0000–0079.png` doplněno 2026-08-04. `scripts/slice-latent.mjs`
+z nich staví plný 10×8 grid (256×256 webp) do `public/images/latent/`, bilineární crossfade
+interpolace mezi reálnými sousedy. Degradace níže (bod 1) je tím vyřešena na plnou verzi.
 
 **Nejvíc závislý prvek.** Bez sady snímků nelze 2D interpolaci postavit vůbec.
 
@@ -110,7 +142,7 @@ na `--bg-deep` pozadí, 1200×630.
 
 | Prvek | Bez nových assetů | S assety |
 |---|---|---|
-| Defect Revealer | ✅ funkční, syntetický defekt overlay | ✅ plná věrohodnost |
+| Defect Revealer | ✅ funkční, syntetický defekt overlay | ✅ pár dodán 2026-08-05, výměna čeká |
 | GUI Demo | ⚠️ 3 snímky místo 6–8 | ✅ plná sekvence |
 | Compositing Deconstructor | ⚠️ 5 vrstev, 2 procedurální | ✅ reálné vrstvy z pipeline |
 | Latent Navigator | ❌ 1D slider nebo 4×4 grid | ✅ plný 2D navigátor |

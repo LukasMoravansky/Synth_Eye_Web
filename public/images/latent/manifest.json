@@ -1,0 +1,109 @@
+{
+  "cols": 10,
+  "rows": 8,
+  "cell": 256,
+  "count": 80,
+  "aligned": true,
+  "axes": {
+    "x": "part orientation (principal axis)",
+    "y": "surface state (luminance bands)"
+  },
+  "grid": [
+    [
+      "Image_0030.png",
+      "Image_0021.png",
+      "Image_0026.png",
+      "Image_0027.png",
+      "Image_0036.png",
+      "Image_0039.png",
+      "Image_0013.png",
+      "Image_0000.png",
+      "Image_0017.png",
+      "Image_0005.png"
+    ],
+    [
+      "Image_0034.png",
+      "Image_0038.png",
+      "Image_0004.png",
+      "Image_0035.png",
+      "Image_0016.png",
+      "Image_0018.png",
+      "Image_0001.png",
+      "Image_0025.png",
+      "Image_0011.png",
+      "Image_0019.png"
+    ],
+    [
+      "Image_0009.png",
+      "Image_0028.png",
+      "Image_0031.png",
+      "Image_0007.png",
+      "Image_0033.png",
+      "Image_0037.png",
+      "Image_0003.png",
+      "Image_0023.png",
+      "Image_0006.png",
+      "Image_0029.png"
+    ],
+    [
+      "Image_0022.png",
+      "Image_0024.png",
+      "Image_0015.png",
+      "Image_0008.png",
+      "Image_0002.png",
+      "Image_0012.png",
+      "Image_0014.png",
+      "Image_0032.png",
+      "Image_0010.png",
+      "Image_0020.png"
+    ],
+    [
+      "Image_0067.png",
+      "Image_0070.png",
+      "Image_0052.png",
+      "Image_0072.png",
+      "Image_0048.png",
+      "Image_0068.png",
+      "Image_0060.png",
+      "Image_0040.png",
+      "Image_0059.png",
+      "Image_0079.png"
+    ],
+    [
+      "Image_0069.png",
+      "Image_0049.png",
+      "Image_0075.png",
+      "Image_0055.png",
+      "Image_0047.png",
+      "Image_0050.png",
+      "Image_0062.png",
+      "Image_0042.png",
+      "Image_0078.png",
+      "Image_0058.png"
+    ],
+    [
+      "Image_0051.png",
+      "Image_0071.png",
+      "Image_0065.png",
+      "Image_0061.png",
+      "Image_0073.png",
+      "Image_0053.png",
+      "Image_0076.png",
+      "Image_0056.png",
+      "Image_0054.png",
+      "Image_0074.png"
+    ],
+    [
+      "Image_0066.png",
+      "Image_0046.png",
+      "Image_0064.png",
+      "Image_0044.png",
+      "Image_0045.png",
+      "Image_0041.png",
+      "Image_0077.png",
+      "Image_0057.png",
+      "Image_0063.png",
+      "Image_0043.png"
+    ]
+  ]
+}

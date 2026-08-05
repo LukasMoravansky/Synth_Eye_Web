@@ -1,0 +1,332 @@
+---
+/**
+ * Particle Field Transformation — prostorový přechod Blender éra → GAN éra.
+ *
+ * Pinning: CSS `position: sticky` na .ptf__stage, NE ScrollTrigger `pin: true`.
+ * Důvod: scroll na webu řídí Lenis a scrollerProxy ve scroll-setup.js je
+ * registrovaný na document.body, kde ho žádný trigger nepoužívá. ScrollTrigger
+ * pin by tedy obaloval sekci pin-spacerem a posouval ji transformem mimo
+ * Lenisův scroll model → skoky na hranici pinu. Sticky pin je čistě CSS,
+ * jitter-free, a ScrollTrigger tu slouží jen jako čtečka progressu
+ * (start 'top top' / end 'bottom bottom' se s sticky oknem kryje 1:1,
+ * takže scroll nahoru je symetrický ke scrollu dolů).
+ *
+ * Režimy (JS nastaví data-ptf-mode na této sekci):
+ *   – bez atributu = výchozí stav i pro vypnutý JS → statická dvojice framů
+ *   – "particles"  = canvas particle field (fine pointer + motion OK)
+ *   – "crossfade"  = touch/coarse pointer, particle fyzika vypnutá
+ *   – "static"     = prefers-reduced-motion
+ * Fallback framy a canvas nikdy nekoexistují v layoutu — JS nepoužitou
+ * variantu odstraní z DOM (viz particle-transition.js), takže to nejde
+ * přebít specificitou jako dřív atributem `hidden`.
+ */
+import Picture from './Picture.astro';
+---
+
+<section
+  id="transition"
+  class="ptf"
+  aria-label="Blender to GAN transformation"
+  data-particle-transition
+>
+  <p class="sr-only">
+    Scroll-driven transformation from a physically rendered part to a GAN generated part.
+    The image disintegrates into a particle field and reassembles into the generated output.
+  </p>
+
+  <div class="ptf__stage">
+    <div class="ptf__chamber">
+      <header class="ptf__meta mono" aria-hidden="true">
+        <span class="ptf__label ptf__label--src">Blender · physical render</span>
+        <span class="ptf__label ptf__label--tgt">GAN · generated</span>
+      </header>
+
+      <div class="ptf__plate">
+        <canvas class="ptf__canvas" data-particle-canvas aria-hidden="true"></canvas>
+
+        <div class="ptf__frames" data-particle-frames>
+          <figure class="ptf__frame ptf__frame--src">
+            <Picture slug="transition-src" alt="Physically rendered inspection part" loading="lazy" />
+            <figcaption class="mono">Blender · physical render</figcaption>
+          </figure>
+          <figure class="ptf__frame ptf__frame--tgt">
+            <Picture slug="transition-gan" alt="GAN generated inspection part" loading="lazy" />
+            <figcaption class="mono">GAN · generated</figcaption>
+          </figure>
+        </div>
+
+        <span class="ptf__bracket ptf__bracket--tl" aria-hidden="true"></span>
+        <span class="ptf__bracket ptf__bracket--tr" aria-hidden="true"></span>
+        <span class="ptf__bracket ptf__bracket--bl" aria-hidden="true"></span>
+        <span class="ptf__bracket ptf__bracket--br" aria-hidden="true"></span>
+      </div>
+
+      <footer class="ptf__readout mono" aria-hidden="true">
+        <span class="ptf__rail"><i></i></span>
+        <span class="ptf__pct" data-ptf-pct>transform 000%</span>
+      </footer>
+    </div>
+
+    <p class="ptf__quote" data-transition-text aria-hidden="true">
+      <span>What if instead of simulating physics…</span>
+      <em>you let the machine learn what reality looks like?</em>
+    </p>
+  </div>
+</section>
+
+<script>
+  import { whenVisible } from '../scripts/lib/lazy-init.js';
+  whenVisible('[data-particle-transition]', () => import('../scripts/particle-transition.js'));
+</script>
+
+<style>
+  .ptf {
+    /* --lp = scroll progress 0–1, --q = viditelnost citátu 0–1. Zapisuje JS. */
+    --lp: 0;
+    --q: 0;
+    position: relative;
+    background: var(--bg-deep);
+    /* Výchozí (a no-JS) stav je statická dvojice — žádná vysoká prázdná
+       sticky sekce, dokud JS nepotvrdí, že animovaná varianta poběží. */
+    padding-block: var(--section-py);
+  }
+
+  /* Pin travel: 280vh sekce − 100vh sticky okno = 180vh čistého scrollu na
+     oblouk rozpad → chaos → rekonstrukce. Původních 150vh dávalo 50vh, což
+     se dalo přeletět jedním gestem trackpadu. */
+  .ptf[data-ptf-mode='particles'],
+  .ptf[data-ptf-mode='crossfade'] {
+    min-height: 280vh;
+    padding-block: 0;
+  }
+
+  .ptf[data-ptf-mode='particles'] .ptf__stage,
+  .ptf[data-ptf-mode='crossfade'] .ptf__stage {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+  }
+
+  .ptf__stage {
+    display: grid;
+    place-items: center;
+    padding-inline: var(--gutter);
+    overflow: hidden;
+  }
+
+  .ptf__chamber {
+    display: grid;
+    gap: var(--space-4);
+    width: 100%;
+    max-width: min(880px, 100%);
+    justify-items: stretch;
+  }
+
+  /* Animované režimy: plate je čtverec, takže šířku komory musí limitovat
+     i výška viewportu (meta + readout + gapy ≈ 130 px), jinak čtverec
+     přeteče sticky okno. 680 px drží plate editorial, ne full-bleed. */
+  .ptf[data-ptf-mode='particles'] .ptf__chamber,
+  .ptf[data-ptf-mode='crossfade'] .ptf__chamber {
+    max-width: min(680px, 100%, calc(100svh - 170px));
+  }
+
+  .ptf[data-ptf-mode='particles'] .ptf__plate,
+  .ptf[data-ptf-mode='crossfade'] .ptf__plate {
+    aspect-ratio: 1 / 1;
+  }
+
+  /* ── mono rám: labely nad, progress readout pod ─────────────────────── */
+  .ptf__meta {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-4);
+    font-size: var(--fs-mono-sm);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  /* Křížový fade: zdrojový label mizí v první třetině, cílový přichází
+     v poslední. Uprostřed jsou oba tlumené — nikdo neví, co to právě je. */
+  .ptf__label--src {
+    opacity: clamp(0.18, calc(1 - var(--lp) * 2.4), 1);
+  }
+  .ptf__label--tgt {
+    opacity: clamp(0.18, calc(var(--lp) * 2.4 - 1.4), 1);
+    color: var(--accent-light);
+  }
+
+  .ptf__readout {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    font-size: var(--fs-mono-sm);
+    color: var(--text-muted);
+  }
+
+  .ptf__rail {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+    overflow: hidden;
+  }
+
+  .ptf__rail i {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    transform: scaleX(var(--lp));
+    transform-origin: left center;
+  }
+
+  .ptf__pct {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  /* ── plate = inspekční komora ───────────────────────────────────────── */
+  .ptf__plate {
+    position: relative;
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.6);
+  }
+
+  .ptf__bracket {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--text-muted);
+    opacity: 0.55;
+    pointer-events: none;
+  }
+  .ptf__bracket--tl { top: 6px; left: 6px; border-width: 1px 0 0 1px; }
+  .ptf__bracket--tr { top: 6px; right: 6px; border-width: 1px 1px 0 0; }
+  .ptf__bracket--bl { bottom: 6px; left: 6px; border-width: 0 0 1px 1px; }
+  .ptf__bracket--br { bottom: 6px; right: 6px; border-width: 0 1px 1px 0; }
+
+  /* Canvas je viditelný teprve když JS potvrdí particle režim. */
+  .ptf__canvas { display: none; }
+
+  .ptf[data-ptf-mode='particles'] .ptf__canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    /* Citát si ve svém okně bere scénu — field klesne na 45 %. Ne až na
+       nulu: rozpad má za textem zůstat čitelný, jinak citát visí v prázdnu. */
+    opacity: calc(1 - var(--q) * 0.55);
+  }
+
+  /* ── statická / no-JS varianta: dvojice framů vedle sebe ───────────── */
+  .ptf__frames {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .ptf__frame {
+    position: relative;
+    background: var(--bg-deep);
+    padding: var(--space-4);
+  }
+
+  .ptf__frame figcaption {
+    margin-top: var(--space-3);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .ptf__frame--tgt figcaption { color: var(--accent-light); opacity: 0.75; }
+
+  /* ── crossfade varianta (touch): framy na sobě, opacita ze scrollu ──── */
+  .ptf[data-ptf-mode='crossfade'] .ptf__frames {
+    display: block;
+    background: none;
+    height: 100%;
+  }
+
+  .ptf[data-ptf-mode='crossfade'] .ptf__frame {
+    position: absolute;
+    inset: 0;
+    padding: 0;
+    display: grid;
+    place-items: center;
+  }
+
+  .ptf[data-ptf-mode='crossfade'] .ptf__frame figcaption { display: none; }
+
+  /* Zdroj odchází v první polovině, cíl přichází v druhé; uprostřed se
+     krátce prolnou a oba dostanou lehký indigo posun a rozostření —
+     analogie chaotické fáze bez particle fyziky. */
+  .ptf[data-ptf-mode='crossfade'] .ptf__frame--src {
+    opacity: clamp(0, calc(1.15 - var(--lp) * 1.85), 1);
+  }
+  .ptf[data-ptf-mode='crossfade'] .ptf__frame--tgt {
+    opacity: clamp(0, calc(var(--lp) * 1.85 - 0.7), 1);
+  }
+  .ptf[data-ptf-mode='crossfade'] .ptf__frames::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: var(--accent);
+    mix-blend-mode: soft-light;
+    opacity: calc(var(--q) * 0.5);
+  }
+
+  /* ── citát ─────────────────────────────────────────────────────────── */
+  .ptf__quote {
+    position: absolute;
+    max-width: 22ch;
+    text-align: center;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(1.75rem, 4vw, 3.25rem);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    text-wrap: balance;
+    opacity: var(--q);
+    /* Vstup i odchod nese drift vzhůru — text „proletí" chaotickou fází. */
+    transform: translateY(calc((1 - var(--q)) * 18px));
+    pointer-events: none;
+    text-shadow: 0 0 60px var(--bg-deep), 0 0 24px var(--bg-deep);
+  }
+
+  .ptf__quote em {
+    display: block;
+    margin-top: var(--space-3);
+    font-style: normal;
+    color: var(--accent-light);
+  }
+
+  /* ── statický režim (prefers-reduced-motion i no-JS) ───────────────────
+     Citát nesmí ležet přes framy — dostane vlastní řádek. A progress rail,
+     procentuální readout ani křížově prolínající labely tu nemají co dělat:
+     bez animace neexistuje progress, který by ukazovaly. Zůstává dvojice
+     zarámovaných plates s vlastními monospace popiskami — čte se jako
+     kontaktní list z inspekce, ne jako rozbitá animace. */
+  .ptf:not([data-ptf-mode='particles']):not([data-ptf-mode='crossfade']) .ptf__meta,
+  .ptf:not([data-ptf-mode='particles']):not([data-ptf-mode='crossfade']) .ptf__readout {
+    display: none;
+  }
+
+  .ptf:not([data-ptf-mode='particles']):not([data-ptf-mode='crossfade']) .ptf__quote {
+    position: static;
+    opacity: 1;
+    transform: none;
+    margin: var(--space-8) auto 0;
+    text-shadow: none;
+  }
+
+  @media (max-width: 768px) {
+    .ptf__frames { grid-template-columns: 1fr; }
+    .ptf__meta { font-size: 10px; }
+    .ptf__quote { max-width: 18ch; }
+  }
+</style>

@@ -1,0 +1,92 @@
+{
+  "part-front": {
+    "slug": "part-front",
+    "width": 1920,
+    "height": 1200,
+    "aspect": 1.6
+  },
+  "part-hero": {
+    "slug": "part-hero",
+    "width": 980,
+    "height": 980,
+    "aspect": 1
+  },
+  "part-clean": {
+    "slug": "part-clean",
+    "width": 728,
+    "height": 910,
+    "aspect": 0.8
+  },
+  "part-defected": {
+    "slug": "part-defected",
+    "width": 728,
+    "height": 910,
+    "aspect": 0.8
+  },
+  "transition-src": {
+    "slug": "transition-src",
+    "width": 512,
+    "height": 512,
+    "aspect": 1
+  },
+  "transition-gan": {
+    "slug": "transition-gan",
+    "width": 512,
+    "height": 512,
+    "aspect": 1
+  },
+  "pbr-render": {
+    "slug": "pbr-render",
+    "width": 875,
+    "height": 412,
+    "aspect": 2.1238
+  },
+  "gan-output": {
+    "slug": "gan-output",
+    "width": 1206,
+    "height": 441,
+    "aspect": 2.7347
+  },
+  "scheme-hw": {
+    "slug": "scheme-hw",
+    "width": 869,
+    "height": 320,
+    "aspect": 2.7156
+  },
+  "scheme-pipeline": {
+    "slug": "scheme-pipeline",
+    "width": 1191,
+    "height": 658,
+    "aspect": 1.81
+  },
+  "scheme-gan": {
+    "slug": "scheme-gan",
+    "width": 1200,
+    "height": 570,
+    "aspect": 2.1053
+  },
+  "measure-front": {
+    "slug": "measure-front",
+    "width": 1009,
+    "height": 634,
+    "aspect": 1.5915
+  },
+  "measure-back": {
+    "slug": "measure-back",
+    "width": 1007,
+    "height": 628,
+    "aspect": 1.6035
+  },
+  "industry": {
+    "slug": "industry",
+    "width": 1600,
+    "height": 757,
+    "aspect": 2.1136
+  },
+  "logo-white": {
+    "slug": "logo-white",
+    "width": 800,
+    "height": 322,
+    "aspect": 2.4845
+  }
+}

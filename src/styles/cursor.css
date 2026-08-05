@@ -1,0 +1,145 @@
+.inspection-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--z-cursor);
+}
+
+.inspection-ring {
+  position: fixed;
+  width: 72px;
+  height: 72px;
+  margin: -36px 0 0 -36px;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 20px var(--accent-glow);
+  opacity: 0;
+  transform: scale(0);
+  will-change: transform, opacity;
+}
+
+.inspection-ring::before,
+.inspection-ring::after {
+  content: '';
+  position: absolute;
+  background: var(--accent);
+  opacity: 0.6;
+}
+
+.inspection-ring::before {
+  width: 1px;
+  height: 10px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.inspection-ring::after {
+  width: 10px;
+  height: 1px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Jeden hover = 1..N boxů: objekt (rohové závorky, --accent) + N defektů
+   (uzavřený rámeček, --nok). Tvar nese informaci stejně jako barva. */
+.inspection-boxes {
+  opacity: 0;
+}
+
+.inspection-box {
+  position: fixed;
+  border: none;
+  pointer-events: none;
+}
+
+.inspection-box[hidden] {
+  display: none;
+}
+
+.inspection-box__corner {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-color: var(--accent);
+  border-style: solid;
+}
+
+.inspection-box__corner--tl { top: 0; left: 0; border-width: 1px 0 0 1px; }
+.inspection-box__corner--tr { top: 0; right: 0; border-width: 1px 1px 0 0; }
+.inspection-box__corner--bl { bottom: 0; left: 0; border-width: 0 0 1px 1px; }
+.inspection-box__corner--br { bottom: 0; right: 0; border-width: 0 1px 1px 0; }
+
+/* Defekt = uzavřený rámeček bez závorek. Malý nález se v šumu kovu ztratí,
+   proto inset glow — čitelnost bez zvětšování boxu (což by lhalo o rozsahu). */
+.inspection-box--defect {
+  border: 1px solid var(--nok);
+  box-shadow: inset 0 0 10px var(--nok-glow), 0 0 8px var(--nok-glow);
+}
+
+.inspection-box--defect .inspection-box__corner {
+  display: none;
+}
+
+/* Label ukotvený k boxu (ne ke kurzoru) — čte se u toho, co popisuje. */
+.inspection-box__tag {
+  position: absolute;
+  bottom: 100%;
+  left: -1px;
+  margin-bottom: 4px;
+  /* 10px + tracking 0.04em drží chip v jedné typografické rodině s mono
+     mikrolabely stránky i s chipem v GUI Demu. Plný tracking 0.08em (ten je
+     pro uppercase slova) rozpadá snake_case názvy tříd na nečitelno. */
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-light);
+  background: rgba(8, 8, 12, 0.88);
+  border-left: 1px solid var(--accent);
+  padding: 1px 5px;
+  white-space: nowrap;
+}
+
+/* Defekt: chip POD box — nad boxem by kolidoval s chipem objektu, protože nález
+   začíná jen pár px pod horní hranou dílu. */
+.inspection-box--defect .inspection-box__tag {
+  color: var(--nok);
+  border-left-color: var(--nok);
+  bottom: auto;
+  top: 100%;
+  margin: 4px 0 0;
+}
+
+/* Defekt u spodní hrany snímku → chip zpátky nad box. */
+.inspection-box--defect.is-tag-flip .inspection-box__tag {
+  top: auto;
+  bottom: 100%;
+  margin: 0 0 4px;
+}
+
+/* Objekt u horní hrany viewportu → chip dovnitř boxu. */
+.inspection-box.is-tag-inside .inspection-box__tag {
+  bottom: auto;
+  top: 1px;
+  left: 1px;
+  margin-bottom: 0;
+}
+
+/* U pravé hrany se zarovná na pravý okraj boxu, aby nepřetékal ze snímku. */
+.inspection-box.is-tag-right .inspection-box__tag {
+  left: auto;
+  right: -1px;
+}
+
+/* Snímek užší než ~220 px (mobilní náhled) → chip zmizí, rámeček zůstane.
+   Radši nález bez popisku než popisek přes celý snímek. */
+.inspection-box.is-tag-hidden .inspection-box__tag {
+  display: none;
+}
+
+[data-inspectable]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

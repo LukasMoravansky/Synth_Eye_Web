@@ -1,0 +1,86 @@
+---
+import Picture from './Picture.astro';
+
+const frontDims = [
+  { id: 'height', label: 'Height', ref: 60.0, tol: 3.0, value: 62.08, x: 15, y: 8 },
+  { id: 'width', label: 'Width', ref: 40.0, tol: 3.0, value: 41.02, x: 75, y: 45 },
+  { id: 'hole-diameter', label: 'Hole ⌀', ref: 6.0, tol: 3.0, value: 6.10, x: 35, y: 55 },
+  { id: 'hole-distance', label: 'Hole dist.', ref: 25.0, tol: 3.0, value: 25.20, x: 55, y: 70 },
+];
+---
+
+<section id="measurement" class="measurement section" aria-labelledby="measurement-heading" data-measurement>
+  <div class="container">
+    <h2 id="measurement-heading" data-reveal>From pixel to millimeter</h2>
+    <p class="measurement__lead" data-reveal>From pixel to millimeter. Every part is measured, every tolerance verified.</p>
+
+    <div class="measurement-grid">
+      <div class="measurement-visual" data-reveal>
+        <div class="measurement-tabs" role="tablist" aria-label="Part side">
+          <button type="button" role="tab" aria-selected="true" data-side="front" class="measurement-tab mono is-active">front</button>
+          <button type="button" role="tab" aria-selected="false" data-side="back" class="measurement-tab mono">back</button>
+        </div>
+        <p class="measurement-method mono" data-method-label>method: hough_circles</p>
+        <div class="measurement-img-wrap viewfinder" data-measure-img>
+          <Picture slug="measure-front" alt="Part with dimensional annotations" loading="lazy" inspectable label="Cls_Obj_Front_Side" confidence={99.15} class="measurement-img measure-front" />
+          <Picture slug="measure-back" alt="Back side measurement" loading="lazy" inspectable label="Cls_Obj_Back_Side" confidence={99.15} class="measurement-img measure-back" hidden />
+          <svg class="measurement-dims" viewBox="0 0 100 100" aria-hidden="true">
+            {frontDims.map((d) => (
+              <g class="dim-mark" data-dim={d.id}>
+                <line x1={d.x} y1={d.y} x2={d.x + 10} y2={d.y + 5} stroke="var(--text-muted)" stroke-width="0.3"/>
+                <text x={d.x + 2} y={d.y - 2} font-size="3" fill="var(--text-secondary)" font-family="monospace">{d.label}</text>
+              </g>
+            ))}
+          </svg>
+        </div>
+      </div>
+
+      <div class="measurement-gauges" data-reveal-group>
+        {frontDims.map((d) => (
+          <button type="button" class="gauge" data-dim={d.id} data-value={d.value} data-ref={d.ref} data-tol={d.tol}
+            aria-label={`${d.label}: measured ${d.value} mm, reference ${d.ref} mm, tolerance ±${d.tol} mm, pass`}>
+            <span class="gauge__name mono">{d.label}</span>
+            <div class="gauge__track">
+              <div class="gauge__band"></div>
+              <div class="gauge__needle" data-gauge-needle></div>
+            </div>
+            <span class="gauge__vals mono">
+              <span data-counter={d.value} data-decimals="2">{d.value}</span> mm
+              <span class="gauge__ref">({d.ref} ±{d.tol})</span>
+              <span class="gauge__pass">PASS ✓</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { whenVisible } from '../scripts/lib/lazy-init.js';
+  whenVisible('[data-measurement]', () => import('../scripts/measurement-gauges.js'));
+</script>
+
+<style>
+  .measurement { background: var(--bg-primary); }
+  .measurement h2 { margin-bottom: var(--space-4); }
+  .measurement__lead { margin-bottom: var(--space-8); color: var(--text-secondary); }
+  .measurement-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: var(--space-8); align-items: start; }
+  .measurement-tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-3); }
+  .measurement-tab { background: var(--bg-surface); border: 1px solid var(--border); padding: var(--space-2) var(--space-4); font-size: 11px; text-transform: uppercase; cursor: pointer; border-radius: var(--radius-sm); }
+  .measurement-tab.is-active { border-color: var(--accent); color: var(--accent); }
+  .measurement-method { font-size: 11px; color: var(--text-muted); margin-bottom: var(--space-4); }
+  .measurement-img-wrap { position: relative; }
+  .measurement-dims { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .dim-mark.is-active line, .dim-mark.is-active text { stroke: var(--accent); fill: var(--accent); filter: drop-shadow(0 0 4px var(--accent-glow)); }
+  .gauge { display: block; width: 100%; text-align: left; background: var(--bg-surface); border: 1px solid var(--border); padding: var(--space-4); margin-bottom: var(--space-4); cursor: pointer; border-radius: var(--radius-sm); }
+  .gauge__name { font-size: 11px; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: var(--space-2); }
+  .gauge__track { height: 8px; background: var(--bg-elevated); position: relative; margin-bottom: var(--space-2); border-radius: var(--radius-sm); }
+  .gauge__band { position: absolute; inset: 0 20%; background: var(--ok-glow); border: 1px solid var(--ok); border-radius: var(--radius-sm); }
+  .gauge__needle { position: absolute; top: -4px; width: 3px; height: 16px; background: var(--text-primary); left: 0; transform: translateX(-50%); }
+  .gauge__vals { font-size: var(--fs-mono-sm); color: var(--text-primary); }
+  .gauge__ref { color: var(--text-muted); margin-left: var(--space-2); }
+  .gauge__pass { color: var(--ok); margin-left: var(--space-3); }
+  .gauge.is-active { border-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow); }
+  @media (max-width: 900px) { .measurement-grid { grid-template-columns: 1fr; } }
+</style>

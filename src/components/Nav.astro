@@ -1,0 +1,68 @@
+---
+/* Minimal fixed nav — A0 stub, styled for dark theme */
+---
+
+<nav class="nav" id="site-nav" aria-label="Site navigation">
+  <div class="nav__inner container">
+    <a href="#hero" class="nav__logo" aria-label="Synth.Eye home">
+      <img src="/images/logo-light.svg" alt="" width="120" height="32" />
+    </a>
+    <div class="nav__links">
+      <a href="https://github.com/rparak/Synth_Eye" target="_blank" rel="noopener noreferrer">
+        GitHub<span class="sr-only"> (opens in new tab)</span>
+      </a>
+      <a href="https://huggingface.co/LukasMoravansky/Synth-Eye-GAN" target="_blank" rel="noopener noreferrer">
+        HuggingFace<span class="sr-only"> (opens in new tab)</span>
+      </a>
+    </div>
+  </div>
+</nav>
+
+<script>
+  const nav = document.getElementById('site-nav');
+  if (nav) {
+    const onScroll = () => nav.classList.toggle('nav--scrolled', window.scrollY > 100);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+</script>
+
+<style>
+  .nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: var(--z-nav);
+    padding-block: var(--space-4);
+    transition: background var(--dur-base) var(--ease-out), backdrop-filter var(--dur-base);
+  }
+  .nav--scrolled {
+    background: rgba(8, 8, 12, 0.72);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .nav__logo img {
+    height: 28px;
+    width: auto;
+  }
+  .nav__links {
+    display: flex;
+    gap: var(--space-5);
+  }
+  .nav__links a {
+    font-family: var(--font-mono);
+    font-size: var(--fs-mono-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+  }
+  .nav__links a:hover {
+    color: var(--accent-light);
+  }
+</style>

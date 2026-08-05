@@ -1,0 +1,117 @@
+---
+import Picture from './Picture.astro';
+
+const syntheticTiles = [
+  { slug: 'gan-output', pos: '0% 0%', label: 'Cls_Obj_Front_Side', conf: 93.15, verdict: 'OK', box: '22,18,52,64' },
+  { slug: 'gan-output', pos: '50% 0%', label: 'Cls_Obj_Front_Side', conf: 93.15, verdict: 'OK', box: '22,18,52,64' },
+  { slug: 'pbr-render', pos: '', label: 'Cls_Obj_Front_Side', conf: 93.15, verdict: 'OK', box: '20,15,55,70' },
+];
+const realTiles = [
+  { slug: 'part-front', pos: '', label: 'Cls_Obj_Front_Side', conf: 99.15, verdict: 'OK', box: '24,18,52,64' },
+  {
+    slug: 'measure-front',
+    pos: '',
+    label: 'Cls_Obj_Front_Side',
+    conf: 93.15,
+    verdict: 'NOK',
+    box: '24,18,52,64',
+    defects: '40,45,12,10',
+    defectLabel: 'Cls_Defect_Fingerprint',
+    defectConf: 92.93,
+  },
+  { slug: 'measure-back', pos: '', label: 'Cls_Obj_Back_Side', conf: 93.15, verdict: 'OK', box: '22,20,54,60' },
+];
+---
+
+<section id="results" class="results section" aria-labelledby="results-heading">
+  <div class="container">
+    <h2 id="results-heading" data-reveal>Trained on synthetic. Proven on real.</h2>
+
+    <dl class="results-metrics" data-reveal-group>
+      <div class="metric metric--primary">
+        <dt><span aria-hidden="true">&gt;</span><span data-counter="99" data-decimals="0" aria-label="Greater than 99 percent">99</span><span aria-hidden="true">%</span></dt>
+        <dd><span>object classification</span><span>on real images</span></dd>
+      </div>
+      <div class="metric">
+        <dt><span aria-hidden="true">&gt;</span><span data-counter="95" data-decimals="0" aria-label="Greater than 95 percent">95</span><span aria-hidden="true">%</span></dt>
+        <dd><span>defect detection</span><span>on real images</span></dd>
+      </div>
+      <div class="metric metric--offset">
+        <dt><span data-counter="6000" data-decimals="0" aria-label="6000">6,000</span></dt>
+        <dd><span>synthetic images</span><span>zero manual labels</span></dd>
+      </div>
+    </dl>
+
+    <div class="evidence" data-reveal>
+      <h3 class="evidence__row-label mono">SYNTHETIC (train) ─────────────────</h3>
+      <div class="evidence__grid">
+        {syntheticTiles.map((t) => (
+          <figure class="evidence__tile viewfinder">
+            <div class="evidence__img-wrap" style={t.pos ? `--pos:${t.pos}` : ''}>
+              <Picture slug={t.slug} alt={`Synthetic training sample — ${t.label}`} loading="lazy" inspectable label={t.label} confidence={t.conf} box={t.box} />
+            </div>
+            <svg class="evidence__box" viewBox="0 0 100 100" aria-hidden="true">
+              <rect x="22" y="18" width="52" height="64" fill="none" stroke="var(--ok)" stroke-width="0.5"/>
+            </svg>
+            <figcaption class="mono"><span class={`verdict verdict--${t.verdict.toLowerCase()}`}>{t.verdict}</span> {t.label} {t.conf}%</figcaption>
+          </figure>
+        ))}
+      </div>
+
+      <h3 class="evidence__row-label mono">REAL (test) ─────────────────</h3>
+      <div class="evidence__grid">
+        {realTiles.map((t) => (
+          <figure class="evidence__tile viewfinder">
+            <Picture
+              slug={t.slug}
+              alt={`Real test sample — ${t.defectLabel ?? t.label}`}
+              loading="lazy"
+              inspectable
+              label={t.label}
+              confidence={t.conf}
+              box={t.box}
+              defects={t.defects}
+              defectLabel={t.defectLabel}
+              defectConfidence={t.defectConf}
+            />
+            <svg class="evidence__box" viewBox="0 0 100 100" aria-hidden="true">
+              <rect x="24" y="18" width="52" height="64" fill="none" stroke={t.verdict === 'OK' ? 'var(--ok)' : 'var(--nok)'} stroke-width="0.5"/>
+            </svg>
+            <figcaption class="mono"><span class={`verdict verdict--${t.verdict.toLowerCase()}`}>{t.verdict}</span> {t.defectLabel ?? t.label} {t.defectConf ?? t.conf}%</figcaption>
+          </figure>
+        ))}
+      </div>
+
+      <p class="evidence__note">Trained entirely on synthetic data. Tested on real production images from the factory floor. No real images were labeled during training.</p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .results { background: var(--bg-deep); }
+  .results h2 { margin-bottom: var(--space-10); }
+  .results-metrics { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: var(--space-6); margin-bottom: var(--space-11); }
+  .metric dt { font-family: var(--font-mono); font-size: clamp(3rem, 8vw, 7rem); font-weight: 500; font-variant-numeric: tabular-nums; color: var(--text-primary); line-height: 1; }
+  .metric--primary dt { font-size: clamp(3.5rem, 9vw, 7.5rem); }
+  .metric--offset { transform: translateY(var(--space-6)); }
+  .metric dd { margin-top: var(--space-4); }
+  .metric dd span { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .metric dd span:first-child { color: var(--text-secondary); }
+  .metric dd span:last-child { color: var(--text-muted); }
+  .evidence__row-label { font-size: 11px; color: var(--text-muted); margin: var(--space-8) 0 var(--space-4); letter-spacing: 0.06em; }
+  .evidence__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-5); margin-bottom: var(--space-6); }
+  .evidence__tile { position: relative; background: var(--bg-surface); border: 1px solid var(--border); padding: var(--space-3); }
+  .evidence__img-wrap img { object-position: var(--pos, center); }
+  .evidence__box { position: absolute; inset: var(--space-3); width: calc(100% - var(--space-6)); height: calc(100% - 2rem); pointer-events: none; }
+  .evidence__tile figcaption { font-size: 10px; color: var(--text-muted); margin-top: var(--space-2); }
+  .verdict { font-weight: 700; margin-right: var(--space-2); }
+  .verdict--ok { color: var(--ok); }
+  .verdict--nok { color: var(--nok); }
+  .evidence__note { color: var(--text-secondary); max-width: 60ch; margin-top: var(--space-6); }
+  @media (max-width: 768px) {
+    .results-metrics { grid-template-columns: 1fr; }
+    .metric--offset { transform: none; }
+    .evidence__grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 480px) { .evidence__grid { grid-template-columns: 1fr; } }
+</style>

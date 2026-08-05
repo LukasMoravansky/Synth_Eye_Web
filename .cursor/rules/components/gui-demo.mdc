@@ -1,0 +1,29 @@
+---
+description: Pravidla pro GUI Demo komponentu (GuiDemo.astro + gui-demo.js) — signature interaktivní prvek webu
+globs: ["src/components/GuiDemo.astro", "src/scripts/gui-demo.js"]
+alwaysApply: false
+---
+
+# GUI Demo — pravidla
+
+Nejkomplexnější a nejviditelnější interaktivní prvek webu — simuluje reálnou PyQt5 inspekční
+aplikaci (reference: `.claude/context/Synth.Eye - html/synth_eye_gui_template.html`).
+
+- Scripted sekvence: 6–8 předdefinovaných snímků, každý s bounding boxy, confidence scores a
+  OK/NOK výsledkem. Sekvence je deterministická (ne random) — musí být reprodukovatelná pro
+  debugging a demo.
+- Logger používá JetBrains Mono (monospace), timestampy ve formátu `HH:MM:SS`. Nový řádek loggeru
+  má `role="log"` `aria-live="polite"` na kontejneru.
+- SVG graf: nové body přistávají s bounce efektem (GSAP elastic ease, `ease: "elastic.out(1, 0.5)"`
+  nebo podobné). Křivka se plynule prodlužuje (ne skokem) — animuj `stroke-dashoffset` nebo
+  postupné přidávání bodů do `path` d atributu.
+- Toolbar tlačítka: CAPTURE a ANALYZE jsou aktivní a funkční. CONNECT/DISCONNECT zobrazí tooltip
+  (nejsou funkční — hardware simulace není v scope webu). MEASURE se aktivuje až po ANALYZE. CLEAR
+  resetuje celý stav komponenty (logger, graf, camera view) na výchozí.
+- Scanline animace při ANALYZE: fialová/bílá poloprůhledná linie (`--accent` s opacity) přejíždí
+  camera viewport shora dolů, signalizuje "processing".
+- Responsivní: na mobilu stacked layout — camera view nad loggerem (ne vedle sebe).
+- Přestylování z `synth_eye_gui_template.html` do dark theme: `--bg-elevated` pozadí komponent,
+  `--text-primary`/`--text-secondary` pro text. Zachovej strukturu (Camera View, System Logger,
+  Productivity Graph), ne vizuální styl originálu.
+- Tlačítka jsou `<button>`, ne `<div>` s click handlerem (keyboard navigace).

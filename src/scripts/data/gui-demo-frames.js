@@ -1,0 +1,78 @@
+export const frames = [
+  {
+    id: 'frame-01',
+    slug: 'part-front',
+    side: 'front',
+    verdict: 'OK',
+    confidence: 99.86,
+    boxes: [
+      { label: 'Cls_Obj_Front_Side', confidence: 93.15, x: 0.24, y: 0.18, w: 0.52, h: 0.64, type: 'object' },
+    ],
+    measurements: [
+      { name: 'Height', ref: 60.0, tol: 3.0, value: 62.08, dim: 'height' },
+      { name: 'Width', ref: 40.0, tol: 3.0, value: 41.02, dim: 'width' },
+      { name: 'Hole ⌀', ref: 6.0, tol: 3.0, value: 6.10, dim: 'hole-diameter' },
+      { name: 'Hole dist.', ref: 25.0, tol: 3.0, value: 25.20, dim: 'hole-distance' },
+    ],
+    logs: [
+      { delay: 0, text: 'Capture button pressed. Performing camera scan.' },
+      { delay: 200, text: 'Image successfully captured with resolution 1600x1200 in RGB format.' },
+      { delay: 400, text: 'Analyze button pressed. Performing SynthEye AI analysis of the RGB image.' },
+      { delay: 800, text: 'Detected front side of the metallic object on the image. Confidence: 93.15 %.' },
+      { delay: 1200, text: 'The result of the SynthEye AI analysis is OK. Confidence: 99.86 %.' },
+      { delay: 1600, text: 'The SynthEye AI analysis has been completed.' },
+    ],
+    defectOverlay: false,
+  },
+  {
+    id: 'frame-02',
+    slug: 'part-front',
+    side: 'front',
+    verdict: 'NOK',
+    confidence: 92.93,
+    boxes: [
+      { label: 'Cls_Obj_Front_Side', confidence: 93.15, x: 0.24, y: 0.18, w: 0.52, h: 0.64, type: 'object' },
+      { label: 'Cls_Defect_Fingerprint', confidence: 92.93, x: 0.42, y: 0.48, w: 0.12, h: 0.1, type: 'defect' },
+    ],
+    measurements: [
+      { name: 'Height', ref: 60.0, tol: 3.0, value: 62.08, dim: 'height' },
+      { name: 'Width', ref: 40.0, tol: 3.0, value: 41.02, dim: 'width' },
+      { name: 'Hole ⌀', ref: 6.0, tol: 3.0, value: 6.10, dim: 'hole-diameter' },
+      { name: 'Hole dist.', ref: 25.0, tol: 3.0, value: 25.20, dim: 'hole-distance' },
+    ],
+    logs: [
+      { delay: 0, text: 'Capture button pressed. Performing camera scan.' },
+      { delay: 200, text: 'Image successfully captured with resolution 1600x1200 in RGB format.' },
+      { delay: 400, text: 'Analyze button pressed. Performing SynthEye AI analysis of the RGB image.' },
+      { delay: 800, text: 'Detected front side of the metallic object on the image. Confidence: 93.15 %.' },
+      { delay: 1000, text: 'Detected defect in the area of fingerprint on the front side of the metallic object. Confidence: 92.93 %.' },
+      { delay: 1400, text: 'The result of the SynthEye AI analysis is NOK. Confidence: 92.93 %.' },
+      { delay: 1800, text: 'The SynthEye AI analysis has been completed.' },
+    ],
+    defectOverlay: true,
+  },
+  {
+    id: 'frame-03',
+    slug: 'measure-back',
+    side: 'back',
+    verdict: 'OK',
+    confidence: 99.86,
+    boxes: [
+      { label: 'Cls_Obj_Back_Side', confidence: 93.15, x: 0.22, y: 0.2, w: 0.54, h: 0.6, type: 'object' },
+    ],
+    measurements: [
+      { name: 'Height', ref: 60.0, tol: 3.0, value: 61.95, dim: 'height' },
+      { name: 'Width', ref: 40.0, tol: 3.0, value: 40.88, dim: 'width' },
+      { name: 'Hole ⌀', ref: 6.0, tol: 3.0, value: 6.05, dim: 'hole-diameter' },
+      { name: 'Hole dist.', ref: 25.0, tol: 3.0, value: 25.10, dim: 'hole-distance' },
+    ],
+    logs: [
+      { delay: 0, text: 'Capture button pressed. Performing camera scan.' },
+      { delay: 200, text: 'Image successfully captured with resolution 1600x1200 in RGB format.' },
+      { delay: 400, text: 'Analyze button pressed. Performing SynthEye AI analysis of the RGB image.' },
+      { delay: 800, text: 'Detected back side of the metallic object on the image. Confidence: 93.15 %.' },
+      { delay: 1200, text: 'The result of the SynthEye AI analysis is OK. Confidence: 99.86 %.' },
+    ],
+    defectOverlay: false,
+  },
+];

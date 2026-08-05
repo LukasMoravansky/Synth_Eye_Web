@@ -24,9 +24,25 @@ pnpm-debug.log*
 !.vscode/extensions.json
 .idea/
 
+# Cursor IDE (local prompts/agents; rules/ can stay committable)
+.cursor/prompts/
+.cursor/agents/
+
+# Claude Code (local session overrides; context/ stays tracked)
+.claude/settings.local.json
+
+# TypeScript
+*.tsbuildinfo
+
+# Build / cache temp
+.cache/
+.tmp-fonts/
+
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
+ehthumbs.db
 
 # Vercel
 .vercel/

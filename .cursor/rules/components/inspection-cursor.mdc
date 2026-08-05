@@ -1,0 +1,23 @@
+---
+description: Pravidla pro Inspection Cursor — průřezový viewfinder kurzor napříč celým webem
+globs: ["src/scripts/inspection-cursor.js", "src/styles/global.css"]
+alwaysApply: false
+---
+
+# Inspection Cursor — pravidla
+
+Cross-cutting motiv — funguje na VŠECH `[data-inspectable]` obrázcích napříč sekcemi, ne jen v
+jedné komponentě. Změny zde mají dopad na celý web.
+
+- Viewfinder circle (kruhový highlight kolem cursor pozice), confidence score v JetBrains Mono,
+  bounding box s class labelem.
+- Data (confidence, label) čteno z `data-confidence` a `data-label` atributů na
+  `[data-inspectable]` elementech — nikdy hardcodovaná v JS.
+- Deaktivace na touch zařízeních (`matchMedia('(pointer: coarse)')`) — nahrazeno tap-to-inspect
+  interakcí (tap zobrazí stejné info, bez continuous tracking).
+- Cursor element má `pointer-events: none` (nesmí blokovat interakci s podkladovým obsahem) a
+  `will-change: transform` (GPU-accelerated pohyb).
+- Pohyb kurzoru řízen `requestAnimationFrame` s throttle na `mousemove`, ne přímý update na
+  každý event.
+- Respektuje `prefers-reduced-motion` — buď bez smooth lag/lerp na pozici, nebo úplně statický
+  fallback bez trackingu.

@@ -1,0 +1,30 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Hero from '../components/Hero.astro';
+import DataGap from '../components/DataGap.astro';
+import PipelineBlender from '../components/PipelineBlender.astro';
+import PipelineTransition from '../components/PipelineTransition.astro';
+import PipelineGAN from '../components/PipelineGAN.astro';
+import GuiDemo from '../components/GuiDemo.astro';
+import Measurement from '../components/Measurement.astro';
+import Results from '../components/Results.astro';
+import OpenSource from '../components/OpenSource.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Base>
+  <Nav />
+  <main id="main-content" tabindex="-1">
+    <Hero />
+    <DataGap />
+    <PipelineBlender />
+    <PipelineTransition />
+    <PipelineGAN />
+    <GuiDemo />
+    <Measurement />
+    <Results />
+    <OpenSource />
+  </main>
+  <Footer />
+</Base>

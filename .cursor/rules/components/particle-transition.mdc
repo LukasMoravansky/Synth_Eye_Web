@@ -1,0 +1,21 @@
+---
+description: Pravidla pro Particle Transition (Canvas 2D scroll-scrubbed morph mezi Blender a GAN výstupem)
+globs: ["src/components/PipelineTransition.astro", "src/scripts/particle-transition.js"]
+alwaysApply: false
+---
+
+# Particle Transition — pravidla
+
+- Canvas 2D API, nikdy WebGL/Three.js — celá myšlenka JS budgetu stojí na tom, že se tomuto
+  přidání nevyhneme jinak než custom kódem.
+- Každý pixel (nebo downsampled vzorek pixelů) zdrojového obrázku = jedna částice.
+- Scroll-scrubbed přes GSAP ScrollTrigger `scrub: true`. Fázování progressu:
+  - 0–30 %: celistvý zdrojový obraz (Blender render)
+  - 30–60 %: rozpad na částice
+  - 60–100 %: skládání do nového obrazu (GAN výstup)
+- `requestAnimationFrame` loop s throttle — nepočítej frame, pokud se scroll progress nezměnil.
+- Animace/výpočet se zastaví, pokud canvas není ve viewportu (`IntersectionObserver`).
+- Fallback pro `prefers-reduced-motion` a mobilní/touch zařízení: CSS crossfade dissolve mezi
+  dvěma statickými obrázky, žádná particle fyzika.
+- Maximální particle count: ~5000 desktop, ~1000 mobil (downsample source image rozlišení podle
+  zařízení před generováním částic, ne runtime cap uprostřed animace).

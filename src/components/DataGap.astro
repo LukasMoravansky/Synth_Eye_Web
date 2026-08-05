@@ -1,0 +1,469 @@
+---
+import Picture from './Picture.astro';
+
+/* Silueta dílu (part-clean.png, 728×910) v % rámu stage — sdílená mezi
+   clip-path vrstvami (matte, lighting) a SVG wireframem, aby geometrie
+   sedla na fotku pixel na pixel během crossfade. */
+const PART_CLIP =
+  'polygon(22.9% 14.1%, 78% 13.6%, 80.4% 17.6%, 80.1% 78.2%, 77.2% 83%, 24% 82.6%)';
+
+const cadSteps = [
+  ['01', 'CAD geometry'],
+  ['02', 'Material assignment'],
+  ['03', 'PBR textures'],
+  ['04', 'Physical lighting'],
+  ['05', 'Rendered frame'],
+];
+---
+
+<section id="data-gap" class="data-gap section" aria-labelledby="data-gap-heading" data-data-gap>
+  <div class="container">
+    <h2 id="data-gap-heading" data-reveal>The data gap</h2>
+
+    <article class="gap-block gap-block--1" data-reveal-group>
+      <div class="gap-block__text" data-reveal>
+        <h3>Real defects are rare</h3>
+        <p>In quality manufacturing, defects occur in single-digit percentages. To train an AI model to detect a fingerprint on a metal part, you need hundreds to thousands of defective samples. Producing them on purpose is expensive and does not scale.</p>
+      </div>
+      <div class="gap-block__visual" data-reveal>
+        <div class="gap-parts">
+          <figure class="gap-part">
+            <Picture
+              slug="part-clean"
+              alt="Machined metal part, clean surface"
+              loading="lazy"
+              inspectable
+              label="Cls_Obj_Front_Side"
+              confidence={99.15}
+              box="23,13,57,69"
+              sizes="(max-width: 768px) 45vw, 22vw"
+            />
+            <figcaption class="mono"><i class="gap-part__dot" aria-hidden="true"></i>clean</figcaption>
+          </figure>
+          <figure class="gap-part gap-part--defect">
+            <Picture
+              slug="part-defected"
+              alt="The same part with fingerprint residue on the upper face"
+              loading="lazy"
+              inspectable
+              label="Cls_Obj_Front_Side"
+              confidence={93.15}
+              box="20.5,16.6,58.7,70.4"
+              defectLabel="Cls_Defect_Fingerprint"
+              defectConfidence={92.93}
+              defects="22.1,18.1,20.2,30.8;55.9,25.2,13.3,19.8"
+              sizes="(max-width: 768px) 45vw, 22vw"
+            />
+            <figcaption class="mono"><i class="gap-part__dot" aria-hidden="true"></i>defected</figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <div
+        class="ratio-bar"
+        data-ratio-bar
+        data-reveal
+        role="img"
+        aria-label="One defective part for every 130 clean parts in series production."
+      >
+        <div class="ratio-bar__head" aria-hidden="true">
+          <span class="ratio-bar__count mono"><span data-ratio-count>000</span> clean</span>
+          <span class="ratio-bar__flag mono" data-ratio-flag>1 defect</span>
+        </div>
+        <div class="ratio-bar__track" aria-hidden="true">
+          <div class="ratio-bar__ticks"></div>
+          <div class="ratio-bar__fill"></div>
+          <div class="ratio-bar__scan"></div>
+          <div class="ratio-bar__defect">
+            <span class="ratio-bar__defect-glow"></span>
+          </div>
+        </div>
+        <span class="ratio-bar__sub mono" aria-hidden="true">1 : 130 — measured defect rate, series production</span>
+      </div>
+    </article>
+
+    <article class="gap-block gap-block--2" data-reveal-group>
+      <div class="gap-block__text" data-reveal>
+        <h3>The product may not exist yet</h3>
+        <p>What if you want the inspection system ready before production even starts? Before the first batch? For a part that exists only as a CAD model?</p>
+      </div>
+
+      <div class="gap-cad" data-cad>
+        <ol class="cad-steps mono" data-cad-steps>
+          <li class="cad-steps__rail" aria-hidden="true"></li>
+          {cadSteps.map(([idx, label], i) => (
+            <li class:list={['cad-step', { 'is-active': i === 0 }]} data-phase={i}>
+              <span class="cad-step__idx">{idx}</span>
+              <span class="cad-step__label">{label}</span>
+            </li>
+          ))}
+        </ol>
+
+        <div class="cad-stage viewfinder" data-cad-stage style={`--part-clip:${PART_CLIP}`}>
+          <div class="cad-layer cad-layer--photo" data-cad-photo>
+            <Picture
+              slug="part-clean"
+              alt="The same part as a physically rendered frame"
+              loading="lazy"
+              sizes="(max-width: 768px) 60vw, 20vw"
+            />
+          </div>
+
+          <div class="cad-layer cad-layer--matte" data-cad-matte aria-hidden="true"></div>
+
+          <div class="cad-layer cad-layer--light" aria-hidden="true">
+            <span class="cad-sweep" data-cad-sweep></span>
+          </div>
+
+          <svg
+            class="cad-layer cad-layer--wire"
+            data-cad-wire
+            viewBox="0 0 100 125"
+            aria-hidden="true"
+            fill="none"
+          >
+            <defs>
+              <pattern id="dg-cad-grid" width="5" height="5" patternUnits="userSpaceOnUse">
+                <path d="M5 0H0V5" stroke="var(--accent)" stroke-width="0.15" opacity="0.35" />
+              </pattern>
+            </defs>
+
+            <g data-cad-grid>
+              <rect width="100" height="125" fill="url(#dg-cad-grid)" />
+              <line x1="23" y1="112" x2="80" y2="112" stroke="var(--text-muted)" stroke-width="0.2" />
+              <text x="23" y="110" font-size="2.6" fill="var(--text-muted)" letter-spacing="0.2">SYNTH_EYE / PART_A · REV 02</text>
+            </g>
+
+            <g stroke="var(--accent)" stroke-width="1" vector-effect="non-scaling-stroke">
+              <path d="M22.9 17.6 L78 17 L80.4 22 L80.1 97.8 L77.2 103.7 L24 103.3 Z" />
+              <circle cx="44" cy="40.5" r="7" stroke-width="0.7" vector-effect="non-scaling-stroke" />
+              <circle cx="44" cy="40.5" r="4.1" />
+              <circle cx="44" cy="76.9" r="7" stroke-width="0.7" vector-effect="non-scaling-stroke" />
+              <circle cx="44" cy="76.9" r="4.1" />
+            </g>
+
+            <g stroke="var(--accent-light)" stroke-width="0.2" opacity="0.55">
+              <path d="M38.5 40.5 H49.5 M44 35 V46" />
+              <path d="M38.5 76.9 H49.5 M44 71.4 V82.4" />
+            </g>
+
+            <g stroke="var(--text-secondary)" stroke-width="0.2" opacity="0.8">
+              <path d="M22.9 17.6 H13.5 M24 103.3 H13.5" />
+              <path d="M15 17.6 V103.3" />
+              <path d="M22.9 17.6 V8.5 M80.4 17.6 V8.5" />
+              <path d="M22.9 11 H80.4" />
+              <path d="M47 37.6 L85 26.5" />
+            </g>
+
+            <g fill="var(--text-secondary)" font-size="3.2">
+              <text x="12.2" y="60" transform="rotate(-90 12.2 60)" text-anchor="middle">60.00</text>
+              <text x="51.6" y="9" text-anchor="middle">40.00</text>
+              <text x="85" y="24.5">⌀6.00</text>
+            </g>
+          </svg>
+
+          <p class="cad-hud mono" data-cad-hud aria-hidden="true">cycles · 128 spp · 1024²</p>
+        </div>
+      </div>
+    </article>
+
+    <article class="gap-block gap-block--3" data-reveal-group>
+      <div class="gap-block__text" data-reveal>
+        <h3>Manual annotation is the bottleneck</h3>
+        <p>Every image needs a bounding box, a label, a quality check. That is hours of manual work. Synth.Eye generates the data and the annotations automatically.</p>
+      </div>
+      <div class="gap-block__stats" data-reveal>
+        <div class="stat">
+          <span class="stat__num mono" data-counter="6000" data-decimals="0">6,000</span>
+          <span class="stat__label mono">images</span>
+        </div>
+        <div class="stat stat--hero viewfinder">
+          <span class="stat__glow" aria-hidden="true"></span>
+          <span class="stat__num mono" data-zero-lock>0</span>
+          <span class="stat__label mono">manual labels</span>
+        </div>
+        <div class="stat">
+          <span class="stat__num mono" data-reveal-text>&lt; 1 hr</span>
+          <span class="stat__label mono">generation time</span>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<script>
+  import { whenVisible } from '../scripts/lib/lazy-init.js';
+  whenVisible('[data-data-gap]', () => import('../scripts/data-gap.js'));
+</script>
+
+<style>
+  .data-gap { background: var(--bg-primary); }
+  .data-gap h2 { margin-bottom: var(--space-9); }
+  .gap-block {
+    display: grid;
+    gap: var(--space-7);
+  }
+  /* Pacing: rozestupy se ke třetímu bloku zkracují — čtení zrychluje
+     směrem k pointě (0 manual labels). */
+  .gap-block--1 { margin-bottom: var(--space-12); }
+  .gap-block--2 { margin-bottom: var(--space-11); }
+  .gap-block h3 { font-size: var(--fs-h3); margin-bottom: var(--space-4); }
+
+  /* ── Blok 1: text v úzké koloně, pár dílů široký, poměrový bar se láme
+     přes celou šířku bloku — vodorovná linka je ta pointa (1 : 130). */
+  .gap-block--1 {
+    grid-template-columns: 0.85fr 1.35fr;
+    grid-template-areas: 'text visual' 'bar bar';
+    align-items: end;
+    row-gap: var(--space-8);
+  }
+  .gap-block--1 .gap-block__text { grid-area: text; }
+  .gap-block--1 .gap-block__visual { grid-area: visual; }
+  .gap-block--1 .ratio-bar { grid-area: bar; }
+
+  .gap-parts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+  .gap-part { position: relative; margin: 0; }
+  .gap-part :global(.picture-wrap) { border: 1px solid var(--border); }
+  .gap-part--defect :global(.picture-wrap) {
+    border-color: color-mix(in srgb, var(--nok) 32%, transparent);
+  }
+  .gap-part figcaption {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: var(--space-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .gap-part__dot {
+    display: block;
+    width: 5px;
+    height: 5px;
+    flex: none;
+    background: var(--ok);
+    box-shadow: 0 0 0 3px var(--ok-glow);
+  }
+  .gap-part--defect figcaption { color: color-mix(in srgb, var(--nok) 70%, var(--text-muted)); }
+  .gap-part--defect .gap-part__dot { background: var(--nok); box-shadow: 0 0 0 3px var(--nok-glow); }
+
+  /* ── Poměrový bar */
+  .ratio-bar__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: var(--space-3);
+  }
+  .ratio-bar__count { font-size: var(--fs-mono-md); color: var(--text-primary); }
+  .ratio-bar__flag {
+    font-size: var(--fs-mono-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--nok);
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  .ratio-bar__track {
+    position: relative;
+    height: 8px;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+  }
+  /* Značky každých 10 dílů — dávají baru měřítko, bez nich je to jen pruh. */
+  .ratio-bar__ticks {
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+      90deg,
+      var(--border-hover) 0 1px,
+      transparent 1px calc(100% / 13)
+    );
+  }
+  .ratio-bar__fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--ok); }
+  /* Scan head — čte se jako inspekční hlava projíždějící sérii. */
+  .ratio-bar__scan {
+    position: absolute;
+    top: -4px;
+    bottom: -4px;
+    left: 0;
+    width: 1px;
+    background: var(--text-primary);
+    box-shadow: 0 0 10px 2px var(--accent-glow);
+    opacity: 0;
+  }
+  /* Poměr 1 : 130 → jediný defekt je 1/131 šířky baru. Segment je záměrně
+     nepatrný; glow ho udrží čitelný, aniž by lhal o proporci. */
+  .ratio-bar__defect {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: max(3px, 0.76%);
+    height: 100%;
+    background: var(--nok);
+    opacity: 0;
+    transform: scaleX(0.2);
+    transform-origin: right center;
+  }
+  .ratio-bar__defect-glow {
+    position: absolute;
+    inset: -10px -14px;
+    background: radial-gradient(ellipse at center, var(--nok-glow), transparent 70%);
+    opacity: 0;
+  }
+  .ratio-bar__sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: block;
+    margin-top: var(--space-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* ── Blok 2: CAD → render */
+  .gap-block--2 { grid-template-columns: 1fr 1fr; align-items: center; }
+  .gap-cad {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-6);
+    align-items: center;
+  }
+  .cad-steps {
+    position: relative;
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    --cad-progress: 0;
+  }
+  .cad-steps__rail { position: absolute; inset: 0; pointer-events: none; }
+  .cad-steps::before,
+  .cad-steps__rail::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 1px;
+  }
+  .cad-steps::before { background: var(--border-hover); }
+  .cad-steps__rail::after {
+    background: var(--accent);
+    transform: scaleY(var(--cad-progress));
+    transform-origin: top center;
+  }
+  .cad-step {
+    display: flex;
+    gap: var(--space-3);
+    align-items: baseline;
+    font-size: 11px;
+    color: var(--text-muted);
+    transition: color var(--dur-base) var(--ease-out);
+  }
+  .cad-step__idx { color: inherit; opacity: 0.6; }
+  .cad-step.is-past { color: var(--text-secondary); }
+  .cad-step.is-active { color: var(--accent); }
+  .cad-step.is-active .cad-step__idx { opacity: 1; }
+
+  .cad-stage {
+    position: relative;
+    aspect-ratio: 728 / 910;
+    width: 100%;
+    max-width: 320px;
+    background: var(--bg-deep);
+  }
+  .cad-layer { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .cad-layer--photo { opacity: 0; will-change: opacity, filter; }
+  .cad-layer--photo :global(.picture-wrap) { width: 100%; height: 100%; background: none; }
+  .cad-layer--photo :global(.picture-img) { width: 100%; height: 100%; object-fit: contain; }
+  /* Materiál bez textury — plochá šedá v siluetě dílu (Blender untextured pass). */
+  .cad-layer--matte {
+    background: #b4b4bc;
+    clip-path: var(--part-clip);
+    opacity: 0;
+  }
+  .cad-layer--light {
+    clip-path: var(--part-clip);
+    overflow: hidden;
+    opacity: 0;
+    mix-blend-mode: screen;
+  }
+  .cad-sweep {
+    position: absolute;
+    inset: 0 -60% 0 0;
+    display: block;
+    background: linear-gradient(
+      112deg,
+      transparent 34%,
+      rgba(255, 255, 255, 0.12) 46%,
+      rgba(255, 255, 255, 0.4) 50%,
+      rgba(255, 255, 255, 0.12) 54%,
+      transparent 66%
+    );
+    will-change: transform;
+  }
+  .cad-layer--wire { will-change: opacity; }
+  .cad-layer--wire text { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .cad-hud {
+    position: absolute;
+    left: var(--space-3);
+    bottom: var(--space-3);
+    margin: 0;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+    opacity: 0;
+  }
+
+  /* ── Blok 3: countery */
+  .gap-block--3 { grid-template-columns: 1fr 1fr; align-items: center; }
+  .gap-block__stats {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: var(--space-6);
+    justify-content: start;
+    align-items: end;
+    text-align: left;
+  }
+  .stat__num { display: block; font-size: var(--fs-mono-lg); color: var(--text-primary); }
+  .stat--hero { position: relative; padding: var(--space-4) var(--space-5); }
+  .stat--hero .stat__num {
+    position: relative;
+    font-size: clamp(3.5rem, 8vw, 5.5rem);
+    line-height: 0.9;
+    color: var(--accent);
+  }
+  /* Glow jako radiální světlo, ne zaoblený vyplněný box. */
+  .stat__glow {
+    position: absolute;
+    inset: -20%;
+    background: radial-gradient(circle at 42% 45%, var(--accent-glow), transparent 65%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .stat__label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: var(--space-3);
+    display: block;
+  }
+  .stat--hero .stat__label { position: relative; color: var(--text-secondary); }
+  .rt-char { display: inline-block; }
+
+  @media (max-width: 1024px) {
+    .gap-cad { grid-template-columns: 1fr; gap: var(--space-5); }
+    .cad-stage { max-width: 260px; }
+  }
+  @media (max-width: 768px) {
+    .gap-block--1, .gap-block--2, .gap-block--3 { grid-template-columns: 1fr; }
+    .gap-block--1 { grid-template-areas: 'text' 'visual' 'bar'; align-items: stretch; }
+    .gap-block--1 { margin-bottom: var(--space-9); }
+    .gap-block--2 { margin-bottom: var(--space-8); }
+    .gap-block__stats { grid-template-columns: 1fr; gap: var(--space-7); }
+    .stat--hero { padding-inline: 0; }
+  }
+</style>

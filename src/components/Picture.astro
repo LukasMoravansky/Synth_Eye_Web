@@ -1,0 +1,106 @@
+---
+/**
+ * Picture — responsive image with AVIF/WebP/PNG fallback
+ * Props: slug, alt, class?, loading?, sizes?, inspectable?, label?, confidence?, fetchpriority?
+ *
+ * Detekční overlay pro inspection cursor (souřadnice v % rozměru obrázku,
+ * formát "left,top,width,height", víc boxů oddělených ";"):
+ *   box?      — bounding box objektu → rohové závorky v --accent, label = label/confidence
+ *   defects?  — bounding boxy defektů → uzavřené rámečky v --nok, label = defectLabel/…
+ */
+import images from '../data/images.json';
+import lqip from '../data/lqip.json';
+
+interface Props {
+  slug: string;
+  alt: string;
+  class?: string;
+  loading?: 'lazy' | 'eager';
+  sizes?: string;
+  inspectable?: boolean;
+  label?: string;
+  confidence?: number;
+  fetchpriority?: 'high' | 'low' | 'auto';
+  box?: string;
+  defects?: string;
+  defectLabel?: string;
+  defectConfidence?: number;
+}
+
+const {
+  slug,
+  alt,
+  class: className = '',
+  loading = 'lazy',
+  sizes = '100vw',
+  inspectable = false,
+  label,
+  confidence,
+  fetchpriority,
+  box,
+  defects,
+  defectLabel,
+  defectConfidence,
+} = Astro.props;
+
+const meta = images[slug as keyof typeof images];
+const width = meta?.width ?? 1600;
+const height = meta?.height ?? 1200;
+const placeholder = lqip[slug as keyof typeof lqip] ?? '';
+
+// Screen reader musí dostat totéž co vidoucí uživatel na hover — tedy i nález,
+// ne jen klasifikaci objektu.
+const detections = [
+  label != null && confidence != null ? `${label}, confidence ${confidence}%` : '',
+  defects && defectLabel != null && defectConfidence != null
+    ? `${defects.split(';').length} defect ${defects.split(';').length === 1 ? 'detection' : 'detections'}: ${defectLabel}, confidence ${defectConfidence}%`
+    : '',
+]
+  .filter(Boolean)
+  .join('. ');
+---
+
+<div
+  class={`picture-wrap ${className}`}
+  style={placeholder ? `background-image:url(${placeholder});background-size:cover` : undefined}
+>
+  <picture>
+    <source type="image/avif" srcset={`/images/${slug}.avif`} />
+    <source type="image/webp" srcset={`/images/${slug}.webp`} />
+    <img
+      src={`/images/${slug}.png`}
+      alt={alt}
+      width={width}
+      height={height}
+      loading={loading}
+      decoding="async"
+      sizes={sizes}
+      fetchpriority={fetchpriority}
+      class="picture-img"
+      tabindex={inspectable ? 0 : undefined}
+      aria-label={inspectable && detections ? detections : undefined}
+      {...inspectable ? {
+        'data-inspectable': true,
+        'data-label': label,
+        'data-confidence': confidence,
+        ...(box ? { 'data-box': box } : {}),
+        ...(defects ? { 'data-defects': defects } : {}),
+        ...(defectLabel ? { 'data-defect-label': defectLabel } : {}),
+        ...(defectConfidence != null ? { 'data-defect-confidence': defectConfidence } : {}),
+      } : {}}
+    />
+  </picture>
+</div>
+
+<style>
+  .picture-wrap {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--bg-surface);
+  }
+  .picture-img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+</style>

@@ -1,0 +1,73 @@
+---
+description: Pravidla pro fázi revize, debuggingu a performance optimalizace na Synth.Eye Web
+globs: ["src/**/*", "public/**/*"]
+alwaysApply: false
+---
+
+# Debug fáze — specifická pravidla
+
+## Před každým fixem
+
+- Zkontroluj browser console (chyby, warnings), Performance tab (long tasks, layout shifts) a
+  Network tab (velikost assetů, cache headers) — ne jen zdrojový kód.
+- Při vizuálním bugu zkontroluj **computed styles** v DevTools, ne jen zdrojový CSS — cascade nebo
+  specificita může přepisovat token, který v souboru vypadá správně.
+
+## GSAP debugging
+
+- Dočasně zapni `markers: true` na dotčeném `ScrollTrigger` pro vizuální ověření trigger pointů
+  (start/end). Odstraň před commitem.
+- `gsap.utils.toArray(selector)` a zaloguj délku pole — ověř, že selektor skutečně matchuje
+  očekávané elementy (typo v class name je nejčastější příčina "animace se nespustí").
+- Pro timeline bugy loguj `.progress()` v `onUpdate` callbacku k ověření, kde přesně timeline
+  "zaseká" nebo skáče.
+
+## Lenis debugging
+
+- Ověř, že Lenis instance je propojena s GSAP ScrollTrigger:
+  `lenis.on('scroll', ScrollTrigger.update)` a že `ScrollTrigger.scrollerProxy`/`ticker` používá
+  Lenis `raf`, ne nativní scroll event.
+- Pokud se ScrollTrigger triggery posouvají o pixel offset, zkontroluj, jestli Lenis nemá jiný
+  `wrapper`/`content` element než ScrollTrigger `scroller`.
+
+## Canvas debugging (particle transition)
+
+- Přidej dočasný debug frame (červený `border` kolem `<canvas>`) k ověření rozměrů/pozice.
+- Loguj particle count a FPS do on-screen debug overlay (ne jen console) během ladění, odstraň
+  před commitem.
+
+## Astro specifika
+
+- Hydration/scoping issues: ověř `<script>` vs `<script is:inline>` — pokud interaktivní skript
+  "nefunguje" po buildu, nejčastější příčina je, že Astro ho bundluje a mění module scope
+  (proměnné/event listenery nejsou tam, kde je hledáš).
+- V projektu nejsou žádné `client:*` direktivy (žádný UI framework) — pokud je někde uvidíš, je to
+  chyba, ne zamýšlené chování.
+
+## Cross-browser
+
+- Testuj v Chrome, Firefox, Safari (WebKit). `clip-path` chování se mezi nimi liší (Defect
+  Revealer, GUI demo masky) — Safari vyžaduje `-webkit-clip-path`.
+- Canvas performance je v Safari citelně pomalejší — pokud particle transition sekne, sniž particle
+  count na WebKitu (feature-detect, ne user-agent sniffing).
+
+## Responsivita
+
+- Testuj na 360px, 768px, 1024px, 1440px, 1920px.
+- Ověř touch vs mouse chování zvlášť — hover-dependent interakce (Defect Revealer, Inspection
+  Cursor) musí mít touch fallback, ne jen "nefunguje ticho".
+
+## Performance regrese
+
+- Po každé opravě spusť Lighthouse. Sleduj hlavně CLS (layout shifts) a TBT (total blocking time),
+  ne jen celkové skóre.
+- Po lazy-loadu obsahu (obrázky, GUI demo, particle canvas) zavolej
+  `ScrollTrigger.refresh()`/nastav `invalidateOnRefresh: true`, jinak trigger pozice odpovídají
+  staré výšce stránky.
+
+## Dark theme konzistence
+
+- Ověř, že žádný element nemá bílé/light-mode pozadí (výchozí `<button>`, `<select>`,
+  `<input>` stylování prohlížeče je typicky viník).
+- Zkontroluj `::selection`, `:focus-visible` a scrollbar styling — snadno se zapomenou a prozradí
+  light-mode default.

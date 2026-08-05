@@ -1,0 +1,59 @@
+---
+/* Sub-component — Compositing Deconstructor (A6) */
+---
+
+<div class="compositing-deck" data-compositing-deck aria-label="Compositing layer deconstructor">
+  <p class="sr-only">Five compositing layers from camera background to final YOLO-labeled output. Drag or tap layers to inspect.</p>
+  <ol class="compositing-deck__list sr-only">
+    <li>layer_0 camera_background chroma green</li>
+    <li>layer_1 front.pkl object</li>
+    <li>layer_2 fingerprint.pkl defect</li>
+    <li>layer_3 alpha_blend pressure_sim</li>
+    <li>layer_4 composite yolo_labels</li>
+  </ol>
+  <div class="compositing-deck__stage" data-deck-stage>
+    <button type="button" class="deck-layer deck-layer--0" data-layer="0" aria-label="layer_0 · camera_background · chroma green"><span class="deck-layer__bg"></span><span class="deck-layer__tab mono">layer_0 · camera_background</span></button>
+    <button type="button" class="deck-layer deck-layer--1" data-layer="1" aria-label="layer_1 · front.pkl → object"><img src="/images/gan-output.webp" alt="" style="object-position: 0% 0%" /><span class="deck-layer__tab mono">layer_1 · front.pkl</span></button>
+    <button type="button" class="deck-layer deck-layer--2" data-layer="2" aria-label="layer_2 · fingerprint.pkl → defect"><img src="/images/gan-output.webp" alt="" style="object-position: 50% 50%; mix-blend-mode:multiply; opacity:0.7" /><span class="deck-layer__tab mono">layer_2 · fingerprint.pkl</span></button>
+    <button type="button" class="deck-layer deck-layer--3" data-layer="3" aria-label="layer_3 · alpha_blend + pressure_sim"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><radialGradient id="pressure"><stop offset="0%" stop-color="rgba(123,110,246,0.3)"/><stop offset="100%" stop-color="transparent"/></radialGradient></defs><rect width="100" height="100" fill="url(#pressure)" style="mix-blend-mode:overlay"/></svg><span class="deck-layer__tab mono">layer_3 · alpha_blend</span></button>
+    <button type="button" class="deck-layer deck-layer--4" data-layer="4" aria-label="layer_4 · composite + yolo_labels">
+      <img src="/images/gan-output.webp" alt="" style="object-position: 0% 0%" />
+      <svg class="deck-yolo" viewBox="0 0 100 100" aria-hidden="true"><rect x="22" y="18" width="52" height="64" fill="none" stroke="var(--ok)" stroke-width="0.5"/><text x="22" y="16" font-size="3" fill="var(--ok)" font-family="monospace">Cls_Obj_Front_Side 93.15%</text><rect x="40" y="45" width="12" height="10" fill="none" stroke="var(--nok)" stroke-width="0.5"/><text x="40" y="43" font-size="2.5" fill="var(--nok)" font-family="monospace">Cls_Defect_Fingerprint 92.93%</text></svg>
+      <span class="deck-layer__tab mono">layer_4 · composite + yolo</span>
+    </button>
+  </div>
+  <div aria-live="polite" class="deck-status mono" data-deck-status></div>
+</div>
+
+<script>
+  import { whenVisible } from '../scripts/lib/lazy-init.js';
+  whenVisible('[data-compositing-deck]', () => import('../scripts/compositing-deck.js'));
+</script>
+
+<style>
+  .compositing-deck { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-7) 0; }
+  /* -36px = rezerva na odsazení stacku (layer_4 je translate(32px)), jinak
+     nejvyšší vrstva přetéká viewport a stránka scrolluje do strany. */
+  .compositing-deck__stage { position: relative; width: min(calc(90vw - 36px), 520px); aspect-ratio: 4/3; }
+  .deck-layer {
+    position: absolute; inset: 0;
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    cursor: grab;
+    touch-action: none;
+    padding: 0;
+    overflow: hidden;
+    transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .deck-layer img, .deck-layer svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .deck-layer__bg { display: block; width: 100%; height: 100%; background: linear-gradient(145deg, #1a3a1f, #245c2c); }
+  .deck-layer__tab { position: absolute; right: 0; top: 0; font-size: 9px; color: var(--text-muted); background: var(--bg-elevated); padding: 2px 6px; opacity: 0; transition: opacity 0.2s; }
+  .deck-layer:hover .deck-layer__tab, .deck-layer.is-dragging .deck-layer__tab { opacity: 1; }
+  .deck-layer--0 { z-index: 1; transform: translate(0,0) scale(1); }
+  .deck-layer--1 { z-index: 2; transform: translate(8px,8px) scale(0.99); }
+  .deck-layer--2 { z-index: 3; transform: translate(16px,16px) scale(0.98); }
+  .deck-layer--3 { z-index: 4; transform: translate(24px,24px) scale(0.97); }
+  .deck-layer--4 { z-index: 5; transform: translate(32px,32px) scale(0.96); }
+  .deck-yolo { position: absolute; inset: 0; pointer-events: none; }
+  .deck-status { font-size: 11px; color: var(--text-muted); margin-top: var(--space-4); min-height: 1.5em; }
+</style>

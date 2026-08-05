@@ -1,0 +1,17 @@
+{
+  "part-front": "data:image/webp;base64,UklGRkIAAABXRUJQVlA4IDYAAABwAwCdASoUAA0ALvmczmclLy8vDwD4S0gABc7/1o8H+wMNCAAA/uvrTAP1lF3h/t94JACAAAA=",
+  "part-hero": "data:image/webp;base64,UklGRk4AAABXRUJQVlA4IEIAAADQAwCdASoUABQAPzmEt1OvKKUisAgB4CcJaQAAUrfRaEKzVhYkAZAA/rngpK52JH3DOx/7qsf9BiMrppC0N12lAgA=",
+  "part-clean": "data:image/webp;base64,UklGRk4AAABXRUJQVlA4IEIAAABwBACdASoUABkAPzmKvlOvKacisAgB4CcJaQAAUrlWwcGDsnU1G331rAlfVAD+ueBcQH5vE2COxDzPak/1A9jXWAA=",
+  "part-defected": "data:image/webp;base64,UklGRlQAAABXRUJQVlA4IEgAAACQBACdASoUABkAPzmAtVSvJ6SjMBgMAeAnCWcAzcAPS04Oh69s6DZOE8ZH1kAA/rnyjzxBwwumE45u2Au6cnt72j4PexkxwAA=",
+  "transition-src": "data:image/webp;base64,UklGRkwAAABXRUJQVlA4IEAAAABQBACdASoUABQAPzGAtVOuqCUit/VYAdAmCWkA0BgPSH+/e4JdwVwAz4HAAP65SMwgw1icweuSLW1WIL3XQgAA",
+  "transition-gan": "data:image/webp;base64,UklGRloAAABXRUJQVlA4IE4AAADQBACdASoUABQAPzmMu1WvKaYjKA1R4CcJaQAALqd4k/6LUqNLpY5wMN306XEPAAD+3NuokXCDncguBSRWDGWKgHvbJrqjgcUJ92wgAAA=",
+  "pbr-render": "data:image/webp;base64,UklGRlAAAABXRUJQVlA4IEQAAAAwAwCdASoUAAkAPzmMu1SvKaYjMAgB4CcJaQDLLBtfGa0AAP5AglUNJRBcYJ4XwsGIUoXHwspBio070F3rQvxGtSAAAA==",
+  "gan-output": "data:image/webp;base64,UklGRkAAAABXRUJQVlA4IDQAAACwAgCdASoUAAcAPzmEuVOvKKWisAgB4CcJaQAAeyAA/uunTHDXtWyn8hbvsbedAqs/wAAA",
+  "scheme-hw": "data:image/webp;base64,UklGRkAAAABXRUJQVlA4IDQAAABQAwCdASoUAAcAPzmOvlOvKqcisAgB4CcJaQDKACzcmuOyAAD+7Dqqt745vwcJHfhgDAAA",
+  "scheme-pipeline": "data:image/webp;base64,UklGRkIAAABXRUJQVlA4IDYAAABQAwCdASoUAAsAPzmEuVOvKKWisAgB4CcJaQDKAC0HmtuAIAD+7I0lKwYXId4fC98uNn82AAA=",
+  "scheme-gan": "data:image/webp;base64,UklGRkAAAABXRUJQVlA4IDQAAADQAgCdASoUAAoAPzmGuVOvKSWkMAgB4CcJaQAAe/QAAP7rUgeDkrj215slmHJFLiNwEAAA",
+  "measure-front": "data:image/webp;base64,UklGRkgAAABXRUJQVlA4IDwAAABwAwCdASoUAA0APzmGulOvKSWisAgB4CcJYwAAWbCf++XeIQAA3hHWD7x5uUs6yFFrXT/2gazBHpQAAAA=",
+  "measure-back": "data:image/webp;base64,UklGRkYAAABXRUJQVlA4IDoAAAAwAwCdASoUAAwAPzmGuVOvKSWisAgB4CcJYwAAO7e9Mm4AAPDAKMUs6+DQkbVkrL9pteyIGI2nqSAA",
+  "industry": "data:image/webp;base64,UklGRlIAAABXRUJQVlA4IEYAAABwAwCdASoUAAkAPzmEuVOvKKWisAgB4CcJbAC7LwAALL5gD/AA01UTYI3M4cE7m198D2BdzYqFZfVVmjDQ9dKWnhAMgAAA",
+  "logo-white": "data:image/webp;base64,UklGRkAAAABXRUJQVlA4IDQAAABwAwCdASoUAAgAPzmEulOvKKWisAgB4CcJaQAAUpr8Iln8sAAA/nGdSPQ4TmrNtDKVbYAA"
+}
