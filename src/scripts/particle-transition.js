@@ -13,7 +13,7 @@ import { ScrollTrigger, prefersReducedMotion } from './lib/motion.js';
  * rozlišení (~1800×1100), tedy plnila 0,7 % plochy → tečkovaný šum.
  */
 
-/* Grid = plošné rozlišení particle fieldu. 384² → ~66k částic po cullu.
+/* Grid = plošné rozlišení particle fieldu. 384² → ~85k částic po cullu.
    Oba framy jsou v assetech 512², takže grid 384 vzorkuje reálný obsah;
    výš už by se jen zvyšovalo CPU za detail, který v 256px GAN výstupu
    nikdy nebyl. */
@@ -23,16 +23,41 @@ const GRID = 384;
    by tady musel být PAD dvojnásobný a obraz by se pak na plate scvrkl. */
 const PAD = 72;
 const BUF = GRID + PAD * 2;
-/* Pod touto hodnotou progressu se kreslí ostrý bitmap místo particle fieldu —
-   při env ≈ 0 sedí každá částice na vlastním pixelu, takže obě cesty jsou
-   geometricky totožné a přechod je bezešvý. Krajní polohy tak nejsou
-   limitované rozlišením gridu. */
-const SHARP_EPS = 0.004;
-/* Pod tímto jasem je pixel fotografické pozadí, ne díl. Histogramy oba framy
-   dělí čistě bimodálně (backdrop < 70, kov > 110), takže cull odstraní i to,
-   že zdrojový frame má šedý kartonový backdrop a cílový černé pozadí —
-   částicuje se jen samotný díl na --bg-deep. */
-const LUMA_CULL = 80;
+/* Krajní okno, ve kterém se přes particle field prolíná ostrý bitmap v plném
+   rozlišení canvasu (na 0 % zdrojový, na 100 % cílový). Geometricky jsou obě
+   cesty při env ≈ 0 totožné, ale bitmap je ostřejší než 384² grid — tvrdé
+   přepnutí proto viditelně cvrnklo do ostrosti přesně v momentě, kdy scroll
+   do sekce dorazil (a znovu při dojezdu). 0,02 progressu ≈ 3,6 vh scrollu:
+   dost na to, aby zaostření bylo plynulé, málo na to, aby se čekalo. */
+const SHARP_HOLD = 0.02;
+/* Konec oblouku. Rozptyl i pozice sem dojedou společně, takže poslední 2 %
+   scrollu už jen dokřupají ostrost cílového framu. Dřív oblouk končil na
+   95 % a zbylých 5 % pinu (≈ 9 vh) bylo mrtvých — dojezd „nedojel". */
+const ARC_END = 0.98;
+/* Pod tímto jasem je pixel pozadí, ne díl. Oba framy mají pozadí sloučené na
+   --bg-deep už v build-assets (u Blender renderu se šedé studiové pozadí
+   odmaskuje přes `alphaKey`), takže sloučené pozadí má jas ~8 a práh smí ležet
+   hned nad ním.
+   Práh 80 (původní hodnota) byl nastavený podle SVĚTLÉHO Blender renderu, ale
+   GAN výstup je celkově tmavší — jeho histogram kulminuje na 80–130 a celý
+   levý okraj, spára i stíny kolem děr leží v pásmu 50–80. Ty pixely se tedy
+   culnuly jako „pozadí" a v krajních polohách zůstala v obraze díra na plate,
+   tj. černé fleky (v GAN framu 7 500 pixelů dílu, ve zdrojovém 1 500).
+   Na 30 zůstává rozdělení pozadí/díl pořád bimodální a jediné, co se dál
+   culluje uvnitř siluety, jsou obě průchozí díry (~2 000 px) — ty černé být
+   mají. */
+const LUMA_CULL = 30;
+/* Šířka náběhu alfy nad prahem (30 → 60). Nekreslí se jen tvrdá maska: pixely
+   v rampě jsou poloprůhledné, což drží měkkou hranu siluety — GAN frame je
+   nativně 256² zvětšený na 512, takže má obrys rozmazaný přes několik pixelů
+   a tvrdý řez by z něj udělal zubatou vystřihovánku. */
+const LUMA_FEATHER = 30;
+
+/** Alfa pixelu podle jeho jasu: 0 pod prahem, 255 nad rampou. */
+function lumaAlpha(l) {
+  const a = (l - LUMA_CULL) / LUMA_FEATHER;
+  return a <= 0 ? 0 : a >= 1 ? 255 : a * 255;
+}
 const MAX_DPR = 2;
 /* --accent #7B6EF6 — tint chaotické fáze. */
 const ACC_R = 123;
@@ -67,14 +92,11 @@ function squareCanvas(img, size, willRead) {
   return { c, ctx };
 }
 
-/** Bitmap pro krajní polohy, s odmaskovaným pozadím ve STEJNÉM prahu jako
- *  particle field. Bez toho by na 0 % svítil šedý kartonový backdrop
- *  zdrojové fotky, který v particle fázi (culled) chybí — a přepnutí na
- *  ostrý bitmap by tím pádem viditelně bliklo.
- *  Feather jde POUZE nahoru od prahu (80 → 120), ne symetricky: šedý
- *  backdrop zdrojové fotky sahá k jasu ~70, takže symetrický feather by ho
- *  vrátil zpět jako průsvitný závoj. Rampa vzhůru zároveň vyhladí zubatou
- *  siluetu na hraně GAN dílu, kde jas kolem prahu šumí. */
+/** Bitmap pro krajní polohy, s odmaskovaným pozadím ve STEJNÉM prahu i rampě
+ *  jako particle field — jinak by se v prolnutí sešly dvě různě vykrojené
+ *  siluety a rozdíl by se projevil právě jako tmavý lem / fleky. Feather jde
+ *  POUZE nahoru od prahu, ne symetricky: symetrická rampa by vracela pozadí
+ *  zpět jako průsvitný závoj. */
 function culledBitmap(img) {
   const size = 512;
   const { c, ctx } = squareCanvas(img, size, true);
@@ -82,8 +104,7 @@ function culledBitmap(img) {
   const px = d.data;
   for (let i = 0; i < px.length; i += 4) {
     const l = (px[i] * 299 + px[i + 1] * 587 + px[i + 2] * 114) / 1000;
-    const a = (l - LUMA_CULL) / 40;
-    px[i + 3] = a <= 0 ? 0 : a >= 1 ? 255 : a * 255;
+    px[i + 3] = lumaAlpha(l);
   }
   ctx.putImageData(d, 0, 0);
   return c;
@@ -105,7 +126,7 @@ function readFrame(img) {
     if (l <= LUMA_CULL) continue;
     const x = px % GRID;
     const y = (px / GRID) | 0;
-    pts.push({ x, y, r, g, b, l });
+    pts.push({ x, y, r, g, b, l, a: lumaAlpha(l) });
     sx += x;
     sy += y;
   }
@@ -145,25 +166,34 @@ function hash(i) {
 }
 
 /* Dramaturgie podle konceptu: 0 % celistvý obraz · 30 % se začíná rozpadat
-   · 60 % chaos · 100 % složeno. Exponent 2,2 na nástupu drží obraz čitelný
-   dlouho do první třetiny (env 0,03 na 10 %, 0,26 na 30 % — na 30 % je díl
-   ještě rozeznatelný včetně obou děr) a teprve pak akceleruje;
-   plateau 55–68 % je držený chaos. Původní symetrický
-   easeInOutQuad neměl plateau ani zdržení — na 30 % už bylo rozprášeno
-   všechno a celý oblouk působil plochý.
-   Kolaps musí dosáhnout nuly do 95 %, ne až do 100 %: krajní polohy kreslí
-   ostrý bitmap (SHARP_EPS) a kdyby v 95 % ještě zbýval rozptyl, přepnutí
-   na bitmap by poskočilo. */
+   · 60 % chaos · 100 % složeno.
+   Nástup: exponent 1,6 na (p/0,52). Derivace v nule je nulová, takže se z
+   ostrého framu nevyjede skokem, ale první zrna se odlepí už kolem 5 %
+   (env 0,02) — s původním exponentem 2,2 byla první desetina scrollu
+   pohledově zmrazená (env 0,006 na 5 %), což při zabraném pinu čte jako
+   „scroll se zasekl". Na 30 % je env 0,38: díl je pořád rozeznatelný včetně
+   obou děr, ale zjevně se rozpadá.
+   Plateau 52–66 % je držený chaos.
+   Kolaps 66→98 % je obrácený smoothstep, ne mocnina: dosedá do nuly s nulovou
+   derivací, takže rozptyl v dojezdu vyhasne, místo aby se u nuly usekl. */
 function envelope(p) {
-  if (p <= 0 || p >= 0.95) return 0;
-  if (p < 0.55) return (p / 0.55) ** 2.2;
-  if (p < 0.68) return 1;
-  return 1 - ((p - 0.68) / 0.27) ** 1.4;
+  if (p <= 0 || p >= ARC_END) return 0;
+  if (p < 0.52) return (p / 0.52) ** 1.6;
+  if (p < 0.66) return 1;
+  const t = (p - 0.66) / (ARC_END - 0.66);
+  return 1 - t * t * (3 - 2 * t);
 }
 
-/** Pozice A→B, easeInOutCubic. */
-function mixEase(t) {
-  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+/** Pozice A→B: smootherstep na okně 0,08 → ARC_END.
+ *  Nula i jednička se dosahují s nulovou derivací i druhou derivací, takže
+ *  rozjezd i dojezd nemají zlom. Klíčové je okno: dřív tu byl easeInOutCubic
+ *  přes celý rozsah, který měl na konci plateau chaosu (68 %) už 93 % posunu
+ *  za sebou — rekonstrukce pak nebyla „částice dosedají na místo", ale jen
+ *  vyhasínání šumu nad hotovým obrazem. Takto na začátek kolapsu zbývá ještě
+ *  ~21 % posunu a rozptyl i pozice dojedou do cíle SPOLU, na ARC_END. */
+function mixEase(p) {
+  const t = Math.min(1, Math.max(0, (p - 0.08) / (ARC_END - 0.08)));
+  return t * t * t * (t * (t * 6 - 15) + 10);
 }
 
 /* Okno citátu 30–60 %: nástup 30–40 %, drží 40–50 %, odchod do 60 %.
@@ -269,6 +299,12 @@ export default function init(root) {
       const c0 = new Uint8Array(n * 3);
       const c1 = new Uint8Array(n * 3);
       const lum = new Uint8Array(n);
+      /* Per-frame krytí z rampy nad prahem. Drží se odděleně pro zdroj a cíl,
+         protože měkký lem má každý frame jinde — kdyby se použila jedna
+         průměrná hodnota, hrana jednoho z nich by se v krajní poloze
+         vykreslila tvrdě. */
+      const a0 = new Uint8Array(n);
+      const a1 = new Uint8Array(n);
 
       for (let i = 0; i < n; i++) {
         const a = A.pts[((i / n) * nA) | 0];
@@ -281,6 +317,8 @@ export default function init(root) {
         c0[j] = a.r; c0[j + 1] = a.g; c0[j + 2] = a.b;
         c1[j] = b.r; c1[j + 1] = b.g; c1[j + 2] = b.b;
         lum[i] = (a.l + b.l) / 2;
+        a0[i] = a.a;
+        a1[i] = b.a;
 
         /* Rozptyl je převážně TANGENCIÁLNÍ: každá částice se otočí kolem
            centroidu o vlastní úhel (±1,0 rad) a mírně změní radius
@@ -352,16 +390,16 @@ export default function init(root) {
         const env = envelope(p);
         const mix = mixEase(p);
 
-        /* Krajní polohy: ostrý bitmap v plném rozlišení canvasu. Splňuje
-           „při 0 % celistvý source obrázek, při 100 % celistvý GAN výstup",
-           bez ohledu na rozlišení gridu. */
-        if (p <= SHARP_EPS || p >= 1 - SHARP_EPS) {
-          const g = gridRect();
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(p <= SHARP_EPS ? sharpA : sharpB, g.x, g.y, g.d, g.d);
-          buf.fill(0); // ať trail nezačne z ustáleného framu
-          return;
-        }
+        /* Krajní okno: ostrý bitmap v plném rozlišení canvasu se prolne přes
+           particle field. Splňuje „při 0 % celistvý source obrázek, při 100 %
+           celistvý GAN výstup" bez ohledu na rozlišení gridu — a protože je to
+           rampa, ne přepínač, nejde ten moment poznat. */
+        const sharpMix =
+          p <= SHARP_HOLD
+            ? 1 - p / SHARP_HOLD
+            : p >= 1 - SHARP_HOLD
+              ? 1 - (1 - p) / SHARP_HOLD
+              : 0;
 
         if (env > 0.05) {
           /* Motion trail — místo tvrdého clearu se doznívá alfa. Drží se jen
@@ -401,13 +439,16 @@ export default function init(root) {
             b += (ACC_B - b) * k;
           }
 
-          /* Alfa: plná na krajích (frame musí být věrný obraz), v chaosu
-             klesá podle jasu → světlé částice zůstanou pevné, tmavé
+          /* Alfa: na krajích krytí z luma rampy (uvnitř siluety plných 255,
+             na měkkém lemu se dopočítá průhlednost — tady se frame musí krýt
+             s ostrým bitmapem, jinak vzniká tmavý lem). V chaosu se navíc
+             škáluje podle jasu → světlé částice zůstanou pevné, tmavé
              přízračné. Nahrazuje velikost částice, kterou 1px zápis
              do bufferu nabídnout neumí. Pokles je mírný (max −43 % u nejtmavší
              částice), jinak se cloud v chaotické fázi rozplyne do neviditelna. */
           const idx = (py * BUF + px) * 4;
-          const a = env > 0 ? 255 - env * (110 - lum[i] * 0.3) : 255;
+          const base = a0[i] + (a1[i] - a0[i]) * mix;
+          const a = env > 0 ? base * (1 - (env * (110 - lum[i] * 0.3)) / 255) : base;
           buf[idx] = r;
           buf[idx + 1] = g;
           buf[idx + 2] = b;
@@ -420,6 +461,13 @@ export default function init(root) {
         ctx.globalCompositeOperation = 'copy';
         ctx.drawImage(off, 0, 0, BUF, BUF, 0, 0, canvas.width, canvas.height);
         ctx.globalCompositeOperation = 'source-over';
+
+        if (sharpMix > 0) {
+          const g = gridRect();
+          ctx.globalAlpha = sharpMix;
+          ctx.drawImage(p <= SHARP_HOLD ? sharpA : sharpB, g.x, g.y, g.d, g.d);
+          ctx.globalAlpha = 1;
+        }
       }
 
       function frame(time) {

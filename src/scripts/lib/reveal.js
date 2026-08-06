@@ -14,11 +14,14 @@ export function initReveals(root = document, opts = {}) {
   root.querySelectorAll('[data-reveal-group]').forEach((group) => {
     const items = group.querySelectorAll('[data-reveal]');
     if (!items.length) return; // prázdný NodeList = "GSAP target not found" warning
+    // Group si smí stagger přebít — mřížky s desítkami položek by při výchozích
+    // 0.08 s běžely několik sekund a vlna by dojezdem přesáhla viewport.
+    const groupStagger = Number(group.dataset.revealStagger);
     gsap.from(items, {
       opacity: 0,
       y: 24,
       duration: 0.7,
-      stagger,
+      stagger: Number.isFinite(groupStagger) && groupStagger > 0 ? groupStagger : stagger,
       ease: 'power2.out',
       scrollTrigger: {
         trigger: group,

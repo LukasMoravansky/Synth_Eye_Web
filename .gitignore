@@ -46,3 +46,49 @@ ehthumbs.db
 
 # Vercel
 .vercel/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Generované assety
+#
+# `npm run build` = assets + assets:latent + og + astro build, takže si celý
+# obsah níže Vercel při každém deployi vyrobí sám ze zdrojů. Zdroje, které
+# tracked ZŮSTÁVAJÍ (bez nich se build neprovede):
+#   · .claude/context/context_images/**      vstupy pro build-assets.mjs
+#   · .claude/context/Synth.Eye - html/**    logo.svg pro build-og.mjs
+#   · public/images/gan_generated/**         vstup pro build-assets + slice-latent
+#   · public/fonts/**                        stahuje se ručně přes `npm run fonts`,
+#                                            NENÍ součástí build pipeline
+#
+# Důvod: derivace jsou binárky přes 40 MB, které se přepisují při každém běhu
+# skriptu (sharp nedává bit-identický výstup), takže každý build v gitu tvořil
+# desítky MB šumu v diffu a konflikty, které nejde rozumně mergovat.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# build-assets.mjs → public/images/<slug>.{avif,webp,png} + .meta.json
+# (glob `*` v gitignore nepřechází přes `/`, takže podadresář gan_generated/
+#  s originály zůstává tracked)
+public/images/*.avif
+public/images/*.webp
+public/images/*.png
+public/images/*.meta.json
+public/images/logo-light.svg
+
+# build-assets.mjs → manifesty pro <Picture> a LQIP placeholdery
+src/data/images.json
+src/data/lqip.json
+
+# slice-latent.mjs → dlaždice Latent Navigatoru z gan_generated/
+public/images/latent/
+
+# build-og.mjs → OG karta a favicony
+public/og-image.png
+public/favicon.ico
+public/favicon.svg
+public/apple-touch-icon.png
+
+# Local overrides
+*.local
+
+# Misc cache
+.eslintcache
+coverage/

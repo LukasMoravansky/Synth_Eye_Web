@@ -1,13 +1,129 @@
 ---
 import Picture from './Picture.astro';
 
+/* First principles: physical simulation — čtyři příčky jednoho argumentu.
+
+   01 virtualizace  → komora existuje dvakrát (fotka standu | Blender dvojče)
+   02 geometrie     → materiál (jeden díl, půl holá geometrie, půl PBR povrch)
+   03 měřítko       → jedna scéna, 6 000 snímků, anotace zadarmo
+   04 verifikace    → render vs. realita, detektor je skóruje stejně
+
+   Že to jsou KROKY, ne čtyři nezávislé bloky, tvrdí layout: společný svislý rail
+   s mono indexy (týž prvek jako .cad-steps v DataGap.astro), jeden <h2>, jedna
+   sekce. Nadpisy příček jsou <h3> kvůli odečítači, ale sazbou jsou to malé mono
+   labely — nesmí konkurovat <h2>, jinak se sekce rozpadne na čtyři témata.
+
+   Vizuální vrchol je příčka 03: jediný prvek v plné šířce containeru, jediný
+   s 22 obrazy, jediný, kde se opakování samo stává obsahem. Příčka 04 je
+   záměrně tichá a úzká — nese argumentační dopad, ne crescendo. Kdyby byly
+   velké obě, ani jedna nevyhraje.
+
+   Předchůdce téhle sekce vkládal dva exporty slidů (scheme-hw, pbr-render) se
+   zapečenými popisky, šipkami a světlými panely. Všechny popisky jsou teď
+   nativně v DOM, v projektových fontech a tokenech; rastr nese jen obraz.
+   Výjimka jsou YOLO bboxy zapečené v dlaždicích příčky 03 — to je datový obsah,
+   ne popisek, a je to celý důkaz „anotace zadarmo". Proto se přes ně žádný
+   vlastní overlay nekreslí, vznikly by dva boxy přes sebe. */
+
+// ── Příčka 01 ──────────────────────────────────────────────────────────────
+/* Fotka reálného standu a Blender scéna jsou TÝŽ rig — shodný hliníkový rám,
+   kamera na témž příčníku s oranžovými svorkami, díl na stejném místě desky.
+   Cropy jsou srovnané na shodný aspect (viz build-assets.mjs), takže srovnání
+   tvrdí „totéž zařízení", ne „dvě podobná zařízení".
+
+   Otevřený stage (chamber-render.png) tu záměrně NENÍ: má dome light a žádný
+   kryt, takže vedle uzavřené komory by se čet jako druhý stroj a sekce by
+   začínala otázkou „kolik těch komor máte?" místo tvrzením. */
+const TWINS = [
+  {
+    slug: 'stand-real',
+    kind: 'real',
+    title: 'Real stand',
+    meta: 'Physical vision rig · JIC lab',
+    alt: 'Photograph of the physical inspection stand: aluminium frame, camera on a cross member, the part lying on the base plate',
+  },
+  {
+    slug: 'scene-twin',
+    kind: 'synthetic',
+    title: 'Blender scene',
+    meta: 'Digital twin · Cycles',
+    alt: 'The same inspection stand rebuilt in Blender: identical frame, identical camera mount, the part in the same position on the plate',
+  },
+];
+
+/* Parametry, které jsou v obou komorách shodné. Dřív to byl rastr se zapečenými
+   callout linkami, teď <dl> — škáluje, je v DOM a odečítač ho přečte. */
+const RIG_SPECS = [
+  ['camera', 'Basler acA1920-40uc'],
+  ['lens', '16 mm · f/4.0'],
+  ['lighting', 'diffuse dome + directional'],
+  ['renderer', 'Cycles · 512 samples'],
+];
+
+// ── Příčka 02 ──────────────────────────────────────────────────────────────
+/* Hrana splitu leží v material-split.png na x 986 zdrojového kádru; crop začíná
+   na 769, takže v hotovém assetu 540×760 je na (986 − 769) / 540 = 40.19 %.
+   Dělící linka i osa popisků čtou tuhle jedinou hodnotu. */
+const SPLIT_AT = '40.19%';
+
+const PBR_CHANNELS = ['albedo', 'roughness', 'normal', 'anisotropy'];
+
+/* Dva materiály z JEDNÉ geometrie. Cutouty jsou registrované na pixel (shodná
+   alfa bbox), takže v páru se liší jen povrchem. */
+const MATERIALS = [
+  {
+    slug: 'mat-front',
+    title: 'brushed aluminium',
+    meta: 'front side',
+    alt: 'The part with a brushed aluminium surface and greasy fingerprint contamination',
+  },
+  {
+    slug: 'mat-back',
+    title: 'oxidized steel',
+    meta: 'back side',
+    alt: 'The same part geometry with a dark oxidized surface',
+  },
+];
+
+// ── Příčka 03 ──────────────────────────────────────────────────────────────
+/* Rozsah datasetu, čtený jako progrese 1 → 6 000 → 2 → 0. Bez rozpadu na
+   front / back / defektní varianty — přesná čísla po skupinách nemáme a
+   vymýšlet je nebudu; 6 000 je totéž číslo, které drží counter v DataGap.astro,
+   tam jako nárok, tady jako podložený důkaz.
+
+   Všechny čtyři položky jsou čísla. Randomizace pozice a světla je tvrzení, ne
+   metrika — nese ji claim nad readoutem, ne buňka se slovem „auto" v sazbě
+   --fs-mono-lg, která se vedle „6,000" čte jako chybějící hodnota. */
+const SCALE_READOUT = [
+  ['1', 'source scene'],
+  ['6,000', 'frames'],
+  ['2', 'part sides'],
+  ['0', 'manual labels'],
+];
+
+const TILE_GROUPS = [
+  {
+    key: 'front',
+    count: 8,
+    caption: 'Front side — randomized pose, rotation and light angle. The blue box is the ground truth the generator wrote with the frame.',
+  },
+  {
+    key: 'back',
+    count: 8,
+    caption: 'Back side — same scene, same run, different material. Orange box, same origin.',
+  },
+];
+
+const DEFECT_COUNT = 6;
+
+// ── Příčka 04 ──────────────────────────────────────────────────────────────
 /* Real vs. rendered — srovnání vedle sebe, identita napsaná od začátku.
 
    Dřív to byl kvíz („hádej, který je render"). Nefunkční: každý snímek je jiný
    vzorek — reálná kontaminace je na horní ploše, procedurální na dolní — takže
-   divák nepoznával render, poznával „jinou fotku". Důkaz tvrzení z citace nad
-   prvkem („indistinguishable from reality") proto nenese oko diváka, ale
-   shodné skóre detektoru vypsané pod oběma snímky.
+   divák nepoznával render, poznával „jinou fotku". Důkaz tvrzení nad prvkem
+   („indistinguishable from reality") proto nenese oko diváka, ale shodné skóre
+   detektoru vypsané pod oběma snímky.
 
    Ze stejného důvodu je nelze překrývat: wipe mezi dvěma neregistrovanými
    vzorky se čte jako chyba registrace, ne jako přechod render → realita.
@@ -17,7 +133,12 @@ import Picture from './Picture.astro';
    „jeden je blíž".
 
    Reálná strana je vlevo: čtení „realita → simulace" je přirozené a maskovat
-   render už není proč. */
+   render už není proč.
+
+   Proti příčce 02 se tenhle blok liší ve třech osách zároveň, takže se nedá
+   splést za „zase dva obrázky vedle sebe": 02 je JEDEN kádr s hranou uvnitř,
+   tady jsou DVA samostatné kádry s bridgem mezi nimi; 02 mluví o povrchu,
+   tady o detektoru; 02 nemá inspection overlay, tady je na obou kádrech. */
 
 // TODO: reálné hodnoty z inference nad real_before.png / render_after.png.
 // Jeden zdroj pravdy pro statický readout i hover overlay — nesmí se rozejít.
@@ -51,71 +172,212 @@ const SHARED = ['same lens', 'same lighting', 'same material', 'same crop'];
   <div class="container">
     <h2 id="blender-heading" data-reveal>First principles: physical simulation</h2>
 
-    <div class="blender-grid">
-      <div class="blender-scheme viewfinder" data-reveal-group>
-        <Picture slug="scheme-hw" alt="Hardware virtualization scheme" loading="lazy" class="blender-scheme__img" />
-        <ul class="blender-annotations mono" aria-hidden="true">
-          <li><span>camera</span> Basler acA1920-40uc</li>
-          <li><span>lens</span> 16 mm · f/4.0</li>
-          <li><span>lighting</span> diffuse dome + directional</li>
-          <li><span>material</span> PBR · brushed aluminium</li>
-          <li><span>renderer</span> Cycles · 512 samples</li>
-        </ul>
-      </div>
+    <blockquote class="blender-lede" data-reveal>
+      We virtualize the entire inspection chamber — camera, lens, lighting, materials.
+      Physical rendering in Blender produces images indistinguishable from reality.
+    </blockquote>
 
-      <div class="blender-output" data-reveal>
-        <Picture slug="pbr-render" alt="PBR render output" loading="lazy" inspectable label="Cls_Obj_Front_Side" confidence={99.15} />
-        <blockquote class="blender-quote">
-          We virtualize the entire inspection chamber — camera, lens, lighting, materials.
-          Physical rendering in Blender produces images indistinguishable from reality.
-        </blockquote>
-      </div>
-    </div>
+    <ol class="ladder">
+      {/* ── 01 ── */}
+      <li class="rung" data-reveal-group>
+        <div class="rung__head" data-reveal>
+          <span class="rung__idx mono" aria-hidden="true">01</span>
+          <h3 class="rung__title mono">Virtualization</h3>
+        </div>
+        <p class="rung__claim" data-reveal>
+          The inspection chamber exists twice — once on the bench, once in Blender.
+          Same frame, same camera mount, same lighting geometry.
+        </p>
 
-    <div class="ab" data-blender-bridge data-reveal-group>
-      <ol class="ab-pair">
-        {CARDS.map(({ slug, kind, title, meta, confidence, alt }) => (
-          <li class:list={['ab-card', `ab-card--${kind}`]} data-reveal>
-            <div class="ab-card__frame viewfinder">
-              <Picture
-                slug={slug}
-                alt={alt}
-                loading="lazy"
-                sizes="(max-width: 768px) 44vw, 22vw"
-                inspectable
-                label={DETECTION_CLASS}
-                confidence={confidence}
-              />
-              <p class="ab-card__origin mono">
+        <div class="twin" data-reveal>
+          {TWINS.map(({ slug, kind, title, meta, alt }) => (
+            <figure class:list={['twin__card', `twin__card--${kind}`]}>
+              <div class="twin__frame viewfinder">
+                <Picture slug={slug} alt={alt} loading="lazy" sizes="(max-width: 768px) 92vw, 44vw" />
+              </div>
+              <figcaption class="twin__origin mono">
                 <b>{title}</b><span>{meta}</span>
-              </p>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+
+        <dl class="rig-specs mono" data-reveal>
+          {RIG_SPECS.map(([key, value]) => (
+            <div class="rig-specs__row">
+              <dt>{key}</dt>
+              <dd>{value}</dd>
             </div>
-            {/* Skóre staticky, ne jen v hover overlayi: caption tvrdí, že detektor
-                oba snímky skóruje stejně — to musí být vidět bez interakce.
-                Pro odečítač je to duplikát (je v aria-label snímku), proto skryté. */}
-            <p class="ab-card__score mono" aria-hidden="true">
-              <span>{DETECTION_CLASS}</span><b>{confidence.toFixed(2)}%</b>
+          ))}
+        </dl>
+      </li>
+
+      {/* ── 02 ── */}
+      <li class="rung" data-reveal-group>
+        <div class="rung__head" data-reveal>
+          <span class="rung__idx mono" aria-hidden="true">02</span>
+          <h3 class="rung__title mono">Geometry → material</h3>
+        </div>
+
+        <div class="material">
+          <figure class="material__split" data-reveal>
+            {/* Jeden díl, jedna silueta. Vlevo od hrany holá geometrie, vpravo
+                týž povrch s PBR texturami — hrana prochází skrz obě díry, takže
+                je vidět, že se mění povrch, ne tvar. Split je statický: clay
+                pass pokrývá jen 37 % šířky dílu, wipe by musel zbytek lhát. */}
+            <div class="material__frame viewfinder" style={`--split:${SPLIT_AT}`}>
+              <Picture
+                slug="material-split"
+                alt="One part, split down the middle: the left portion is untextured geometry, the right portion is the same surface with PBR textures, brushed aluminium with a fingerprint"
+                loading="lazy"
+                sizes="(max-width: 900px) 88vw, 300px"
+              />
+              <span class="material__edge" aria-hidden="true"></span>
+            </div>
+            <figcaption class="material__axis mono" style={`--split:${SPLIT_AT}`}>
+              <span>geometry</span><span>pbr material</span>
+            </figcaption>
+          </figure>
+
+          <div class="material__body">
+            <p class="rung__claim" data-reveal>
+              The mesh carries no appearance. PBR textures turn the same silhouette
+              into a surface a camera can be fooled by — and the same mesh takes
+              more than one surface.
             </p>
-          </li>
+
+            <ul class="chips mono" data-reveal>
+              {PBR_CHANNELS.map((ch) => <li>{ch}</li>)}
+            </ul>
+
+            <div class="mat-pair" data-reveal>
+              {MATERIALS.map(({ slug, title, meta, alt }) => (
+                <figure class="mat-pair__item">
+                  <div class="mat-pair__frame">
+                    <Picture slug={slug} alt={alt} loading="lazy" sizes="(max-width: 900px) 40vw, 150px" />
+                  </div>
+                  <figcaption class="mono"><b>{title}</b><span>{meta}</span></figcaption>
+                </figure>
+              ))}
+            </div>
+          </div>
+        </div>
+      </li>
+
+      {/* ── 03 — vizuální vrchol sekce ── */}
+      <li class="rung rung--scale" data-reveal-group data-reveal-stagger="0.03">
+        <div class="rung__head" data-reveal>
+          <span class="rung__idx mono" aria-hidden="true">03</span>
+          <h3 class="rung__title mono">Scale</h3>
+        </div>
+        <p class="rung__claim rung__claim--wide" data-reveal>
+          One scene, six thousand frames. Pose, rotation and light angle are randomized
+          per frame — and every bounding box is written by the generator, not by a person.
+        </p>
+
+        <dl class="scale-readout mono" data-reveal>
+          {SCALE_READOUT.map(([value, key]) => (
+            <div class="scale-readout__row">
+              <dt>{value}</dt>
+              <dd>{key}</dd>
+            </div>
+          ))}
+        </dl>
+
+        {/* Dlaždice mají alt="" — obsah nese SADA, ne jednotlivý snímek, a
+            šestnáct téměř shodných popisů by odečítač zahltil. Tvrzení je
+            v <figcaption>, tedy v reálném textu, který přečte každý. */}
+        {TILE_GROUPS.map(({ key, count, caption }) => (
+          <figure class:list={['tile-group', `tile-group--${key}`]}>
+            <div class="tile-grid">
+              {Array.from({ length: count }, (_, i) => (
+                <div class="tile" data-reveal>
+                  <Picture
+                    slug={`synth-${key}-0${i + 1}`}
+                    alt=""
+                    loading="lazy"
+                    sizes="(max-width: 900px) 24vw, 12vw"
+                  />
+                </div>
+              ))}
+            </div>
+            <figcaption class="tile-group__caption mono">{caption}</figcaption>
+          </figure>
         ))}
 
-        <li class="ab-bridge" aria-hidden="true" data-reveal>
-          <svg class="ab-bridge__rule" viewBox="0 0 1 100" preserveAspectRatio="none" focusable="false">
-            <line x1="0.5" y1="0" x2="0.5" y2="100" vector-effect="non-scaling-stroke" />
-          </svg>
-          <p class="ab-bridge__specs mono">{SHARED.join(' · ')}</p>
-        </li>
-      </ol>
+        <figure class="tile-group tile-group--defect">
+          <div class="tile-grid tile-grid--defect">
+            {Array.from({ length: DEFECT_COUNT }, (_, i) => (
+              <div class="tile tile--defect" data-reveal>
+                <Picture
+                  slug={`synth-defect-0${i + 1}`}
+                  alt=""
+                  loading="lazy"
+                  sizes="(max-width: 900px) 32vw, 11vw"
+                />
+              </div>
+            ))}
+          </div>
+          <figcaption class="tile-group__caption mono">
+            Procedural fingerprint defects, magenta box — generated on the surface and
+            annotated in the same pass.
+          </figcaption>
+        </figure>
+      </li>
 
-      {/* Tentýž výpis vodorovně — pod ~1024px se do výšky kádru vertikálně
-          nevejde, ale zmizet nesmí, nese tvrzení „jedna komora". */}
-      <p class="ab-shared mono" aria-hidden="true" data-reveal>{SHARED.join(' · ')}</p>
+      {/* ── 04 ── */}
+      <li class="rung rung--payoff" data-reveal-group>
+        <div class="rung__head" data-reveal>
+          <span class="rung__idx mono" aria-hidden="true">04</span>
+          <h3 class="rung__title mono">Verification</h3>
+        </div>
 
-      <p class="ab-caption mono" data-reveal>
-        Left: inspection camera. Right: Blender. Same lens, same lighting, same material —
-        and the detector scores them the same.
-      </p>
-    </div>
+        <div class="ab" data-blender-bridge>
+          <ol class="ab-pair">
+            {CARDS.map(({ slug, kind, title, meta, confidence, alt }) => (
+              <li class:list={['ab-card', `ab-card--${kind}`]} data-reveal>
+                <div class="ab-card__frame viewfinder">
+                  <Picture
+                    slug={slug}
+                    alt={alt}
+                    loading="lazy"
+                    sizes="(max-width: 768px) 44vw, 22vw"
+                    inspectable
+                    label={DETECTION_CLASS}
+                    confidence={confidence}
+                  />
+                  <p class="ab-card__origin mono">
+                    <b>{title}</b><span>{meta}</span>
+                  </p>
+                </div>
+                {/* Skóre staticky, ne jen v hover overlayi: caption tvrdí, že detektor
+                    oba snímky skóruje stejně — to musí být vidět bez interakce.
+                    Pro odečítač je to duplikát (je v aria-label snímku), proto skryté. */}
+                <p class="ab-card__score mono" aria-hidden="true">
+                  <span>{DETECTION_CLASS}</span><b>{confidence.toFixed(2)}%</b>
+                </p>
+              </li>
+            ))}
+
+            <li class="ab-bridge" aria-hidden="true" data-reveal>
+              <svg class="ab-bridge__rule" viewBox="0 0 1 100" preserveAspectRatio="none" focusable="false">
+                <line x1="0.5" y1="0" x2="0.5" y2="100" vector-effect="non-scaling-stroke" />
+              </svg>
+              <p class="ab-bridge__specs mono">{SHARED.join(' · ')}</p>
+            </li>
+          </ol>
+
+          {/* Tentýž výpis vodorovně — pod ~1024px se do výšky kádru vertikálně
+              nevejde, ale zmizet nesmí, nese tvrzení „jedna komora". */}
+          <p class="ab-shared mono" aria-hidden="true" data-reveal>{SHARED.join(' · ')}</p>
+
+          <p class="ab-caption mono" data-reveal>
+            Left: inspection camera. Right: Blender. Same lens, same lighting, same material —
+            and the detector scores them the same.
+          </p>
+        </div>
+      </li>
+    </ol>
   </div>
 </section>
 
@@ -126,19 +388,313 @@ const SHARED = ['same lens', 'same lighting', 'same material', 'same crop'];
 
 <style>
   .pipeline-blender { background: var(--bg-elevated); }
-  .pipeline-blender h2 { margin-bottom: var(--space-8); }
-  /* fr, ne %: 45%+55%+gap = 100% + gap → horizontální overflow celé stránky */
-  .blender-grid { display: grid; grid-template-columns: 45fr 55fr; gap: var(--space-7); margin-bottom: var(--space-10); }
-  .blender-scheme { background: var(--bg-surface); border: 1px solid var(--border); padding: var(--space-5); position: relative; }
-  .blender-annotations { list-style: none; margin-top: var(--space-4); font-size: 11px; color: var(--text-muted); }
-  .blender-annotations li { margin-bottom: var(--space-2); }
-  .blender-annotations span { color: var(--text-secondary); margin-right: var(--space-2); }
-  .blender-quote { margin-top: var(--space-5); font-size: 1.1rem; color: var(--text-secondary); border-left: 2px solid var(--accent); padding-left: var(--space-5); font-style: italic; }
-  /* ── Real vs. rendered ───────────────────────────────────────────────────
+  .pipeline-blender h2 { margin-bottom: var(--space-5); }
+
+  .blender-lede {
+    max-width: 62ch;
+    margin: 0 0 var(--space-9);
+    padding-left: var(--space-5);
+    border-left: 2px solid var(--accent);
+    font-size: 1.1rem;
+    line-height: 1.65;
+    font-style: italic;
+    color: var(--text-secondary);
+  }
+
+  /* ── Žebřík ──────────────────────────────────────────────────────────────
+     Společný rail se čtyřmi zastávkami. Bez něj by čtyři příčky vypadaly jako
+     čtyři nezávislé bloky — a celý smysl sekce je, že to jsou kroky jednoho
+     argumentu. Týž jazyk jako .cad-steps v DataGap.astro. */
+  .ladder {
+    position: relative;
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 var(--space-7);
+  }
+  /* Rail končí u posledního indexu, ne na dně poslední příčky — jinak visí
+     do prázdna pod obsahem. */
+  .ladder::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.55em;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(
+      to bottom,
+      var(--border-hover) 0,
+      var(--border-hover) calc(100% - 220px),
+      transparent 100%
+    );
+  }
+
+  .rung { position: relative; }
+  .rung + .rung { margin-top: var(--space-10); }
+
+  .rung__head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+  }
+  /* Zastávka na railu. Rail leží na levé hraně padding-boxu <ol>, tj.
+     −space-7 od obsahu; −3px centruje 7px puntík na 1px lince. */
+  .rung__head::before {
+    content: '';
+    position: absolute;
+    left: calc(-1 * var(--space-7) - 3px);
+    top: 0.4em;
+    width: 7px;
+    height: 7px;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-glow);
+  }
+  .rung__idx {
+    font-size: var(--fs-mono-md);
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  /* <h3> kvůli odečítači, sazbou malý mono label — nesmí konkurovat <h2>. */
+  .rung__title {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-mono-md);
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+  }
+  .rung__claim {
+    max-width: 56ch;
+    margin: 0 0 var(--space-6);
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+  .rung__claim--wide { max-width: 72ch; }
+
+  /* ── 01 — digitální dvojče ───────────────────────────────────────────────
+     Dva kádry s shodným aspectem a shodným podílem rigu (viz build-assets.mjs).
+     Kdyby se framing lišil, srovnání by tvrdilo „dva podobné stroje". */
+  .twin {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-5);
+    margin-bottom: var(--space-5);
+  }
+  .twin__card { margin: 0; }
+  .twin__frame {
+    position: relative;
+    aspect-ratio: 10 / 9;
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    transition: border-color var(--dur-base) var(--ease-out);
+  }
+  .twin__card:hover .twin__frame { border-color: var(--border-hover); }
+  .twin__card :global(.picture-wrap) { width: 100%; height: 100%; background: none; }
+  .twin__card :global(.picture-img) { width: 100%; height: 100%; object-fit: cover; }
+
+  .twin__origin {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: var(--space-3);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+  .twin__origin b {
+    font-weight: 400;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+  /* Accent = vygenerované. Jediné barevné odlišení v páru, takže nese celý
+     rozdíl mezi realitou a dvojčetem. */
+  .twin__card--synthetic .twin__origin b { color: var(--accent-light); }
+
+  /* Popisky HW, které dřív byly zapečené v rastru schématu. */
+  .rig-specs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, auto));
+    justify-content: start;
+    gap: var(--space-3) var(--space-7);
+    margin: 0;
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border);
+  }
+  .rig-specs__row { display: flex; flex-direction: column; gap: 3px; }
+  .rig-specs dt {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .rig-specs dd { margin: 0; font-size: 11px; color: var(--text-secondary); }
+
+  /* ── 02 — geometrie → materiál ───────────────────────────────────────────
+     Jeden kádr s hranou uvnitř. Vědomě jiná forma než příčka 04 (dva kádry
+     vedle sebe), aby se druhé srovnání nečetlo jako opakování prvního. */
+  .material {
+    display: grid;
+    grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+    gap: var(--space-7);
+    align-items: start;
+    /* Bez limitu se pravá kolona roztáhne na celou příčku, ale obsah v ní končí
+       na 56ch textu a 340px páru — vpravo pak zbývá půl obrazovky prázdna a
+       kompozice se rozpadne. Příčka 03 je ta, která smí jít do plné šířky. */
+    max-width: 880px;
+  }
+  .material__split { margin: 0; }
+  .material__frame {
+    position: relative;
+    aspect-ratio: 540 / 760; /* = crop material-split, viz build-assets.mjs */
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+  }
+  .material__frame :global(.picture-wrap) { width: 100%; height: 100%; background: none; }
+  .material__frame :global(.picture-img) { width: 100%; height: 100%; object-fit: cover; }
+  /* Hrana je nativní 1px linka, ne zapečená čára v rastru — a čte tu samou
+     hodnotu jako osa popisků pod kádrem. */
+  .material__edge {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--split);
+    width: 1px;
+    background: var(--accent);
+    opacity: 0.65;
+  }
+  /* Popisky pod kádrem, ne v něm: díl je v tom místě světlý kov a mono label
+     v --text-muted by na něm nebyl čitelný. */
+  .material__axis {
+    display: grid;
+    grid-template-columns: var(--split) 1fr;
+    margin-top: var(--space-3);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .material__axis span:first-child {
+    text-align: right;
+    padding-right: var(--space-2);
+    border-right: 1px solid var(--accent);
+  }
+  .material__axis span:last-child { padding-left: var(--space-2); color: var(--accent-light); }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    list-style: none;
+    margin: 0 0 var(--space-6);
+    padding: 0;
+  }
+  .chips li {
+    padding: 4px 9px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    background: var(--glass);
+    border: 1px solid var(--border);
+  }
+
+  /* Dvě povrchy z jedné geometrie — cutouty jsou registrované, takže v páru se
+     liší jen materiálem. */
+  .mat-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    max-width: 340px;
+  }
+  .mat-pair__item { margin: 0; }
+  .mat-pair__frame {
+    aspect-ratio: 381 / 560; /* = crop mat-front / mat-back */
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+  }
+  .mat-pair__frame :global(.picture-wrap) { width: 100%; height: 100%; background: none; }
+  .mat-pair__frame :global(.picture-img) { width: 100%; height: 100%; object-fit: cover; }
+  .mat-pair figcaption {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: var(--space-2);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+  .mat-pair figcaption b { font-weight: 400; color: var(--text-secondary); }
+
+  /* ── 03 — měřítko ────────────────────────────────────────────────────────
+     Vrchol sekce. Jde do plné šířky příčky a je to jediný hustý prvek — hustota
+     JE ten argument. Readout drží čísla, mřížka je podkládá obrazem. */
+  .scale-readout {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, auto));
+    justify-content: start;
+    gap: var(--space-4) var(--space-8);
+    margin: 0 0 var(--space-6);
+    padding: var(--space-4) 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .scale-readout__row { display: flex; flex-direction: column; gap: 4px; }
+  .scale-readout dt {
+    font-size: var(--fs-mono-lg);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+  }
+  .scale-readout dd {
+    margin: 0;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  /* „0 manual labels" je pointa příčky — jediný accent v readoutu. */
+  .scale-readout__row:last-child dt { color: var(--accent); }
+  .scale-readout__row:last-child dd { color: var(--text-secondary); }
+
+  .tile-group { margin: 0 0 var(--space-6); }
+  .tile-grid {
+    display: grid;
+    /* minmax(0, 1fr), ne 1fr: obsah dlaždice by jinak držel minimální šířku
+       a mřížka by na 360px přetekla ven z containeru. */
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+  .tile-grid--defect {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    max-width: 62%;
+  }
+  .tile {
+    aspect-ratio: 200 / 250; /* = crop dlaždic, viz build-assets.mjs */
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    transition: border-color var(--dur-base) var(--ease-out);
+  }
+  .tile--defect { aspect-ratio: 220 / 325; }
+  .tile:hover { border-color: var(--border-hover); }
+  .tile :global(.picture-wrap) { width: 100%; height: 100%; background: none; }
+  .tile :global(.picture-img) { width: 100%; height: 100%; object-fit: cover; }
+
+  .tile-group__caption {
+    max-width: 70ch;
+    margin-top: var(--space-3);
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text-muted);
+  }
+
+  /* ── 04 — render vs. realita ─────────────────────────────────────────────
      Dvě stejně velké karty s permanentní identitou, mezi nimi bridge se
      shodnými parametry. Rám drží nativní poměr sdíleného cropu (700×900),
      takže díl vyplňuje kádr a obě strany mají shodné měřítko. */
-  .ab { max-width: 820px; margin-inline: auto; }
+  .ab { max-width: 820px; }
   .ab-pair {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -272,15 +828,31 @@ const SHARED = ['same lens', 'same lighting', 'same material', 'same crop'];
     color: var(--text-muted);
   }
 
-  /* Kádr je tady vysoký ~420 px, vertikální výpis potřebuje ~460 px → přeteče
+  /* ── Responsive ──────────────────────────────────────────────────────────
+     Kádr je tady vysoký ~420 px, vertikální výpis potřebuje ~460 px → přeteče
      mimo obraz. Linka zůstává, text se přesouvá pod pár. */
   @media (max-width: 1023px) {
     .ab-bridge__specs { display: none; }
     .ab-shared { display: block; }
   }
 
+  /* Dlaždice pod 8 sloupci: na 900px vychází ~85 px na dlaždici a díl v ní
+     ~55 px — pod hranicí, kdy je v mřížce ještě čitelný jako díl se závorkami.
+     4 sloupce drží dlaždici nad 74 px i na 360px. */
+  @media (max-width: 900px) {
+    .material { grid-template-columns: 1fr; gap: var(--space-6); }
+    .material__split { max-width: 300px; }
+    .tile-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .tile-grid--defect { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 100%; }
+  }
+
   @media (max-width: 768px) {
-    .blender-grid { grid-template-columns: 1fr; }
+    .ladder { padding-left: var(--space-6); }
+    .rung__head::before { left: calc(-1 * var(--space-6) - 3px); }
+    .rung + .rung { margin-top: var(--space-9); }
+    /* Pár komor se stackuje: srovnání je delší, ale na 360px by dva kádry
+       vedle sebe měly ~160 px a rig v nich by se rozpadl na šedé čárky. */
+    .twin { grid-template-columns: 1fr; }
     /* Vedle sebe zůstává i na mobilu — srovnání je celý smysl prvku. Bridge
        ale ne: vertikální text mezi kádry sežere šířku, kterou potřebuje obraz. */
     .ab-pair { grid-template-columns: 1fr 1fr; gap: var(--space-3); }

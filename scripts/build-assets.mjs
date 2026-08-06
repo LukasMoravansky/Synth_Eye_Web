@@ -4,11 +4,39 @@ import sharp from 'sharp';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const CONTEXT = path.join(ROOT, '.claude', 'context');
+// Rozložené prezentační SVG — texty, šipky a rámečky odstraněné, zůstal obraz.
+const DEC = path.join(CONTEXT, 'context_images', 'decomposed');
 const OUT = path.join(ROOT, 'public', 'images');
 const DATA_DIR = path.join(ROOT, 'src', 'data');
 
 // --bg-deep, pozadí sekcí. Sem se slévá alfa transition framů.
 const BG_DEEP = { r: 8, g: 8, b: 12 };
+
+/* Naměřené středy dílu v syntetických dlaždicích 480×300 (prahování: saturace
+   > 26 nebo luma > 95 — zachytí díl i jeho zapečený bbox). Číslování odpovídá
+   pozici v původní mřížce na slidu, takže pořadí je stabilní. */
+const TILE_CENTERS = {
+  'front-01': [280, 161], 'front-02': [198, 148], 'front-03': [353, 179], 'front-04': [269, 139],
+  'front-05': [247, 114], 'front-06': [184, 190], 'front-07': [351, 116], 'front-08': [326, 182],
+  'back-01': [347, 183], 'back-02': [266, 188], 'back-03': [172, 138], 'back-04': [325, 180],
+  'back-05': [314, 145], 'back-06': [239, 178], 'back-07': [242, 169], 'back-08': [309, 133],
+};
+const TILE_CROP = { w: 200, h: 250, frameW: 480, frameH: 300 };
+
+function synthTiles() {
+  const { w, h, frameW, frameH } = TILE_CROP;
+  return Object.entries(TILE_CENTERS).map(([name, [cx, cy]]) => ({
+    src: path.join(DEC, 'pipeline-synthetic', `${name}.jpg`),
+    slug: `synth-${name}`,
+    max: h,
+    crop: {
+      left: Math.max(0, Math.min(frameW - w, Math.round(cx - w / 2))),
+      top: Math.max(0, Math.min(frameH - h, Math.round(cy - h / 2))),
+      width: w,
+      height: h,
+    },
+  }));
+}
 
 const ASSETS = [
   { src: path.join(CONTEXT, 'Synth.Eye - html', 'Image_004.png'), slug: 'part-front', max: 2400 },
@@ -50,32 +78,48 @@ const ASSETS = [
   // Sekce potřebuje DVA framy se SHODNÝM aspectem (1:1) a shodným framingem,
   // jinak se každý deformuje jinak a interpolace nečte jako přeuspořádání.
   //
-  // TODO(asset): `transition-src` má být čistý Blender render — 1024×1024,
-  // jeden díl na středu, portrétová orientace dílu, pozadí --bg-deep (#08080c),
-  // ŽÁDNÉ titulky/popisky, stejný framing jako public/images/gan_generated/.
-  // Do dodání aproximuje reálný snímek part_clean.png: správný framing
-  // (portrét, díl na středu, dvě díry, dělicí spára) — ale je to fotka, ne
-  // render, takže narativ „Blender → GAN" je zatím doložený nepřesně.
-  // Čtverec 760² centrovaný na díl (bbox 1145,302 → 1575,976 v 1920×1200,
-  // střed 1360,639). Utažený tak, aby díl zabíral ~41 % plochy framu — stejný
-  // podíl jako v transition-gan (47 %). Kdyby byl podíl jiný, particle field
-  // by musel při transformaci měnit celkové měřítko a čtení „stejný díl,
-  // jiný způsob vzniku" by se rozpadlo na „díl se přiblížil".
+  // Source = cad_render.png, tedy REÁLNÝ Blender render (finální pass téhož
+  // dílu). Dřív tu byla fotka part_clean.png, což popíralo labely sekce
+  // („Blender · physical render") a celý narativ Blender → GAN.
+  //
+  // Registrace obou framů (měřeno na hotových 512² assetech, prahování jasu
+  // > 80 = týž práh, na kterém culluje particle field):
+  //   transition-gan  díl 52,5 % plochy, centroid na (0.458, 0.513) framu
+  //   transition-src  crop 688² se stejnými hodnotami
+  // Crop 688 = 741 × √(45,2/52,5), tedy zmenšený tak, aby díl zabíral týž
+  // podíl plochy jako v GAN framu; s prvním odhadem 741 byl díl v cíli o 15 %
+  // větší a transformace se čtla jako „díl se přiblížil", ne jako „týž díl
+  // vznikl jinak". Posazení kolem naměřeného centroidu dílu (925,7 / 536,2 ve
+  // zdrojovém 1920×1200) drží i těžiště na stejném místě.
+  // Silueta se s cílem kryje na IoU 0,72 — zbytek je pootočení o ~3° a hlubší
+  // zahloubení děr, tedy právě to, co má transformace ukázat.
+  //
+  // alphaKey odmaskuje šedé studiové pozadí renderu (jas 40–70, zrno až k 95)
+  // na --bg-deep. Dvojí důvod: (1) crossfade i statický fallback stavějí oba
+  // framy vedle sebe a GAN výstup má pozadí černé — šedý box by v páru bil do
+  // oka; (2) particle field culluje na jasu 30, takže zrno pozadí nad prahem
+  // by při 0 % viselo v komoře jako prach. Práh 30 je nutný — vyšší (dřív 80)
+  // vyřezával i tmavé pixely samotného dílu a v krajních polohách z nich
+  // dělal černé fleky; proto musí alphaKey srazit pozadí opravdu až na
+  // --bg-deep (jas ~8), ne jen ztmavit.
   {
-    src: path.join(CONTEXT, 'context_images', 'part_clean.png'),
+    src: path.join(CONTEXT, 'context_images', 'cad_render.png'),
     slug: 'transition-src',
     max: 512,
-    crop: { left: 980, top: 259, width: 760, height: 760 },
+    crop: { left: 611, top: 183, width: 688, height: 688 },
+    alphaKey: { threshold: 95, feather: 30 },
     flatten: BG_DEEP,
   },
-  // Target frame — Image_0053 z 80 čistých GAN výstupů. Vybraný proto, že je
-  // z osmdesátky nejblíž framingu source framu: portrétový díl, dvě díry nad
-  // sebou, vodorovná dělicí spára přes střed, jen mírně pootočený. Silueta se
-  // tak kryje se zdrojem a transformace čte jako přeuspořádání téhož dílu,
-  // ne jako záměna dvou různých objektů. Zároveň má čisté tmavé pozadí,
-  // vysoký kontrast (sd 42) a žádný vypálený text.
+  // Target frame — Image_0076 z 80 GAN výstupů (zvoleno ručně; předtím
+  // Image_0079, vybraný měřením hlavní osy a polohy defektu).
+  // Pozn. proti Image_0079: díl je pootočený, takže se silueta se zdrojovým
+  // renderem nekryje tak těsně, a korozní defekt sedí vlevo nahoře místo
+  // vpravo od spodní díry. Particle field to unese — korespondence se počítá
+  // polárně kolem centroidu každého framu zvlášť, takže pootočení se čte jako
+  // součást transformace, ne jako chyba. Defekt se ale během přechodu
+  // „přestěhuje", což je vizuálně silnější, ale sémanticky volnější tvrzení.
   {
-    src: path.join(ROOT, 'public', 'images', 'gan_generated', 'Image_0053.png'),
+    src: path.join(ROOT, 'public', 'images', 'gan_generated', 'Image_0076.png'),
     slug: 'transition-gan',
     max: 512,
     upscale: true,
@@ -119,6 +163,110 @@ const ASSETS = [
     max: 1200,
     crop: { left: 692, top: 152, width: 700, height: 900 },
   },
+  // ── Blender sekce: příčka 01 — digitální dvojče komory ───────────────────
+  // Fotka reálného vision standu vedle Blender scény TÉHOŽ rigu: shodný hliníkový
+  // rám, kamera na témž příčníku s oranžovými svorkami, díl na stejném místě desky.
+  // Srovnání nese příčku „komora existuje dvakrát", takže oba kádry musí mít
+  // stejný framing — jinak se čte „dvě podobná zařízení", ne „totéž zařízení".
+  //
+  // Naměřeno:
+  //   scene-blender.png  3840×2160  rig bbox (alfa > 32)  x 1454→2738  y 328→1550
+  //   stand-real.jpg     1210×908   rig plní kádr, na okrajích stůl a zeď dílny
+  //
+  // Cropy srovnané na shodný aspect (1.114 vs 1.111) a shodný podíl rigu v kádru
+  // (85 % resp. 86 % šířky). Reálný snímek se cropuje zleva, aby z kádru zmizel
+  // kus dílny, který v renderu nemá co odpovídat.
+  {
+    src: path.join(DEC, 'pipeline-synthetic', 'stand-real.jpg'),
+    slug: 'stand-real',
+    max: 1200,
+    crop: { left: 105, top: 0, width: 1000, height: 900 },
+  },
+  {
+    src: path.join(DEC, 'pipeline-synthetic', 'scene-blender.png'),
+    slug: 'scene-twin',
+    max: 1400,
+    crop: { left: 1316, top: 239, width: 1560, height: 1400 },
+    flatten: BG_DEEP,
+  },
+  // ── Příčka 02 — geometrie → materiál ─────────────────────────────────────
+  // Jeden díl, levá část holá geometrie, pravá fotorealistický povrch.
+  //
+  // Zdrojový clay pass (front-untextured.jpg) je POLOVIČNÍ kádr 987×1200 z 1920×1200
+  // a má SVĚTLÉ pozadí (naměřeno luma 202 proti 28 u renderu). Vložený jak je by
+  // na --bg-deep byl bílý blok a split by měl uprostřed skok pozadí 202 → 28,
+  // tedy by se čet jako dvě slepené fotky, ne jako jeden díl.
+  //
+  // pbr-front-fingerprint.png je s renderem pixelově registrovaný — naměřeno:
+  //   pbr-front-fingerprint  alfa bbox  x 828→1249  y 288→920  center 1039,604
+  //   front-render.jpg       luma bbox  x 833→1244  y 288→920  center 1039,604
+  // Compose proto vezme z pbr alfu jako siluetu dílu (světlé pozadí se tím
+  // odřízne), vlevo od splitu nechá clay, vpravo položí texturovaný pbr.
+  //
+  // splitX = 986 = šířka clay half-frame, tedy hranice, za kterou clay geometrie
+  // NEEXISTUJE. Proto je split statický: scroll-driven wipe by mohl jezdit jen
+  // přes x 833→986, tj. 37 % šířky dílu, a zbytek by musel lhát.
+  // Hrana v tom místě prochází skrz obě díry — silueta se tedy prokazatelně
+  // nemění a rozdíl nese jen přítomnost povrchového detailu.
+  //
+  // Crop 540×760 kolem naměřeného středu dílu (1039,604) — díl zabírá v kádru
+  // 1920×1200 jen 11 % plochy, bez cropu drobek. Po cropu 78 % šířky a 83 %
+  // výšky rámu; širší crop (zkoušeno 700×900 jako u compare-* páru) nechával
+  // kolem dílu tolik prázdna, že v příčce vedle těsných mat-* cutoutů vypadal
+  // nedovřený. Split zůstává na x 986 zdroje, tedy na 40.19 % šířky assetu.
+  {
+    src: path.join(DEC, 'render-comparison', 'front-untextured.jpg'),
+    slug: 'material-split',
+    max: 760,
+    compose: {
+      alphaFrom: path.join(DEC, 'hw-virtualization', 'pbr-front-fingerprint.png'),
+      over: path.join(DEC, 'hw-virtualization', 'pbr-front-fingerprint.png'),
+      splitX: 986,
+    },
+    crop: { left: 769, top: 224, width: 540, height: 760 },
+    flatten: BG_DEEP,
+  },
+  // Dva materiály z JEDNÉ geometrie — cutouty dílu bez pozadí, registrované na
+  // pixel (obě alfa bbox x 828→1249 y 288→920), takže sdílejí crop a v páru se
+  // liší jen povrchem: broušený hliník s otiskem vs. oxidovaný rub.
+  // Crop 470×690 kolem středu 1039,604 — těsně na naměřený bbox 421×633 dílu
+  // plus ~12 % vzduchu na měkký okraj a stín.
+  {
+    src: path.join(DEC, 'hw-virtualization', 'pbr-front-fingerprint.png'),
+    slug: 'mat-front',
+    max: 560,
+    crop: { left: 804, top: 259, width: 470, height: 690 },
+    flatten: BG_DEEP,
+  },
+  {
+    src: path.join(DEC, 'hw-virtualization', 'pbr-back-oxidized.png'),
+    slug: 'mat-back',
+    max: 560,
+    crop: { left: 804, top: 259, width: 470, height: 690 },
+    flatten: BG_DEEP,
+  },
+  // ── Příčka 03 — generování v měřítku ─────────────────────────────────────
+  // Dlaždice mají nativně 480×300 a díl v nich naměřeno ~120×170 px, tj. 11 %
+  // plochy → bez cropu drobek v prázdném kádru. Crop 200×250 na naměřený střed
+  // dílu (clampnutý do kádru) ho posadí na ~68 % výšky rámu.
+  //
+  // Rotace (v dlaždicích ±25°) zůstává, u dlaždic, kde clamp střed posune, zůstává
+  // i část pozičního rozptylu. Tvrzení „náhodná pozice v kádru" ale nese mono
+  // readout u mřížky, ne rastr — v thumbnailu zobrazeném na ~150 px by se stejně
+  // nepřečetlo.
+  //
+  // Zapečený YOLO bbox (modrý front / oranžový back) je tady OBSAH, ne popisek —
+  // ilustruje „anotace zadarmo". Proto se přes dlaždice nekreslí vlastní overlay.
+  ...synthTiles(),
+  // Detailní cropy fingerprint defektu s magentovým bboxem. Díl v nich plní
+  // naměřeno 83 % plochy → crop nepotřebují, jen malé nativní zobrazení.
+  // Rozměry se mezi snímky liší (212–236 × 316–332), mřížka je proto vyrovnává
+  // rámem s pevným aspectem, ne dopočítaným cropem.
+  ...[1, 2, 3, 4, 5, 6].map((i) => ({
+    src: path.join(DEC, 'pipeline-synthetic', `defect-0${i}.jpg`),
+    slug: `synth-defect-0${i}`,
+    max: 340,
+  })),
   // ── Data Gap / CAD → render (5 fází, scroll-driven) ──────────────────────
   // Čtyři Blender passy téhož dílu: solid (materiál bez textury) → pbr
   // (textury bez světla) → light (anizotropní specular pass, černá s bílými
@@ -144,7 +292,10 @@ const ASSETS = [
   { src: path.join(CONTEXT, 'context_images', 'cad_light.png'), slug: 'cad-light', max: 900, crop: { left: 594, top: 125, width: 660, height: 825 } },
   { src: path.join(CONTEXT, 'context_images', 'cad_render.png'), slug: 'cad-render', max: 900, crop: { left: 594, top: 125, width: 660, height: 825 } },
   { src: path.join(CONTEXT, 'context_images', 'GAN_output.png'), slug: 'gan-output', max: 1600 },
-  { src: path.join(CONTEXT, 'context_images', 'scheme_1.png'), slug: 'scheme-hw', max: 1600 },
+  // scheme_1.png (slug scheme-hw) tu byl pro sekci Blender. Byl to export slidu se
+  // zapečenými popisky, šipkami a světlými panely — na --bg-deep se čet jako
+  // naskenovaná paper figure. Redesign sekce ho nahradil párem stand-real /
+  // scene-twin s popisky nativně v DOM, takže záznam odešel.
   { src: path.join(CONTEXT, 'context_images', 'scheme_2.png'), slug: 'scheme-pipeline', max: 1600 },
   { src: path.join(CONTEXT, 'context_images', 'scheme_3.png'), slug: 'scheme-gan', max: 1600 },
   { src: path.join(CONTEXT, 'context_images', 'measurement.png'), slug: 'measure-front', max: 1600 },
@@ -164,14 +315,60 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 const images = {};
 const lqip = {};
 
-async function processAsset({ src, slug, max, crop, upscale = false, flatten = null, gain = null }) {
+/**
+ * compose: složí jeden asset z víc zdrojů PŘED cropem, ve zdrojových pixelech.
+ * Jednoúčelové jako alphaKey — používá jen material-split, viz odůvodnění tam.
+ *
+ *   alphaFrom  odkud vzít alfu = silueta dílu; určuje, co je díl a co pozadí
+ *   over       obraz položený vpravo od splitX
+ *   splitX     x hrany v pixelech kádru zdroje
+ *
+ * `src` smí být užší než kádr (poloviční kádr) — dopadne se doprava, protože ta
+ * část stejně padne pod `over`.
+ */
+async function composeSplit(src, { alphaFrom, over, splitX }) {
+  const { width, height } = await sharp(alphaFrom).metadata();
+  const maskRaw = await sharp(alphaFrom).ensureAlpha().raw().toBuffer();
+  const overRaw = await sharp(over).ensureAlpha().raw().toBuffer();
+
+  const leftMeta = await sharp(src).metadata();
+  if (leftMeta.width > width || leftMeta.height !== height) {
+    throw new Error(`compose: ${path.basename(src)} (${leftMeta.width}×${leftMeta.height}) nesedí na kádr ${width}×${height}`);
+  }
+  const leftRaw = await sharp(src)
+    .extend({ right: width - leftMeta.width, background: { r: 0, g: 0, b: 0 } })
+    .ensureAlpha()
+    .raw()
+    .toBuffer();
+
+  const out = Buffer.alloc(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      const s = x < splitX ? leftRaw : overRaw;
+      out[i] = s[i];
+      out[i + 1] = s[i + 1];
+      out[i + 2] = s[i + 2];
+      // Alfa VŽDY ze siluety — tím se odřízne světlé pozadí clay passu.
+      out[i + 3] = maskRaw[i + 3];
+    }
+  }
+  return sharp(out, { raw: { width, height, channels: 4 } });
+}
+
+async function processAsset({ src, slug, max, crop, upscale = false, flatten = null, gain = null, alphaKey = null, compose = null }) {
   if (!fs.existsSync(src)) {
     console.warn(`⚠ Missing source: ${src}`);
     return;
   }
 
   const stat = fs.statSync(src);
-  const recipe = JSON.stringify({ src, max, crop: crop ?? null, upscale, flatten, gain });
+  // Do recipe patří i mtime compose zdrojů — jinak by se cache neinvalidovala,
+  // když se změní obraz, který do assetu vstupuje, ale není to `src`.
+  const composeStamp = compose
+    ? [compose.alphaFrom, compose.over].map((p) => (fs.existsSync(p) ? fs.statSync(p).mtimeMs : 0))
+    : null;
+  const recipe = JSON.stringify({ src, max, crop: crop ?? null, upscale, flatten, gain, alphaKey, compose, composeStamp });
   const metaPath = path.join(OUT, `${slug}.meta.json`);
   if (fs.existsSync(metaPath)) {
     const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
@@ -183,7 +380,8 @@ async function processAsset({ src, slug, max, crop, upscale = false, flatten = n
     }
   }
 
-  const img = crop ? sharp(src).extract(crop) : sharp(src);
+  const base = compose ? await composeSplit(src, compose) : sharp(src);
+  const img = crop ? base.extract(crop) : base;
   const orig = crop ? { width: crop.width, height: crop.height } : await img.metadata();
   // upscale: povolené zvětšení nad nativní rozlišení. Používá jen
   // transition-gan (nativně 256²) — particle field ho vzorkuje na grid 384,
@@ -203,6 +401,21 @@ async function processAsset({ src, slug, max, crop, upscale = false, flatten = n
   //     částice → světlý zubatý lem siluety
   // Sloučením na --bg-deep spadne pozadí pod cull threshold a hrana přechází
   // plynule do tmy.
+  // alphaKey: pozadí se odmaskuje podle jasu — pod `threshold` plná průhlednost,
+  // nad `threshold + feather` plné krytí, mezi tím lineární rampa.
+  // Rampa jde POUZE vzhůru od prahu (ne symetricky kolem něj), aby zrno pozadí
+  // těsně nad prahem zůstalo prakticky průhledné. Musí běžet PŘED flatten,
+  // který vyrobenou alfu slije na cílové pozadí.
+  if (alphaKey) {
+    const { data, info } = await resized.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    for (let i = 0; i < data.length; i += 4) {
+      const l = (data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114) / 1000;
+      const k = (l - alphaKey.threshold) / alphaKey.feather;
+      data[i + 3] = k <= 0 ? 0 : k >= 1 ? data[i + 3] : Math.round(k * data[i + 3]);
+    }
+    resized = sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } });
+  }
+
   if (flatten) resized = resized.flatten({ background: flatten });
 
   // gain: per-kanálové vyvážení bílé, [R,G,B] multiplikátory na sRGB hodnotách

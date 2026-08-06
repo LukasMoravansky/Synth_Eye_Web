@@ -53,6 +53,168 @@
     "height": 900,
     "aspect": 0.7778
   },
+  "stand-real": {
+    "slug": "stand-real",
+    "width": 1000,
+    "height": 900,
+    "aspect": 1.1111
+  },
+  "scene-twin": {
+    "slug": "scene-twin",
+    "width": 1400,
+    "height": 1256,
+    "aspect": 1.1146
+  },
+  "material-split": {
+    "slug": "material-split",
+    "width": 540,
+    "height": 760,
+    "aspect": 0.7105
+  },
+  "mat-front": {
+    "slug": "mat-front",
+    "width": 381,
+    "height": 560,
+    "aspect": 0.6804
+  },
+  "mat-back": {
+    "slug": "mat-back",
+    "width": 381,
+    "height": 560,
+    "aspect": 0.6804
+  },
+  "synth-front-01": {
+    "slug": "synth-front-01",
+    "width": 200,
+    "height": 250,
+    "aspect": 0.8
+  },
+  "synth-front-02": {
+    "slug": "synth-front-02",
+    "width": 200,
+    "height": 250,
+    "aspect": 0.8
+  },
+  "synth-front-03": {
+    "slug": "synth-front-03",
+    "width": 200,
+    "height": 250,
+    "aspect": 0.8
+  },
+  "synth-front-04": {
+    "slug": "synth-front-04",
+    "width": 200,
+    "height": 250,
+    "aspect": 0.8
+  },
+  "synth-front-05": {
+    "slug": "synth-front-05",
+    "width": 200,
+    "height": 250,
+    "aspect": 0.8
+  },
+  "synth-front-06": {
+    "slug": "synth-front-06",
+    "width": 200,
+    "height": 250,
+    "aspect": 0.8
+  },
+  "synth-front-07": {
+    "slug": "synth-front-07",
+    "width": 200,
+    "height": 250,
+    "aspect": 0.8
+  },
+  "synth-front-08": {
+    "slug": "synth-front-08",
+    "width": 200,
+    "height": 250,
+    "aspect": 0.8
+  },
+  "synth-back-01": {
+    "slug": "synth-back-01",
+    "width": 200,
+    "height": 250,
+    "aspect": 0.8
+  },
+  "synth-back-02": {
+    "slug": "synth-back-02",
+    "width": 200,
+    "height": 250,
+    "aspect": 0.8
+  },
+  "synth-back-03": {
+    "slug": "synth-back-03",
+    "width": 200,
+    "height": 250,
+    "aspect": 0.8
+  },
+  "synth-back-04": {
+    "slug": "synth-back-04",
+    "width": 200,
+    "height": 250,
+    "aspect": 0.8
+  },
+  "synth-back-05": {
+    "slug": "synth-back-05",
+    "width": 200,
+    "height": 250,
+    "aspect": 0.8
+  },
+  "synth-back-06": {
+    "slug": "synth-back-06",
+    "width": 200,
+    "height": 250,
+    "aspect": 0.8
+  },
+  "synth-back-07": {
+    "slug": "synth-back-07",
+    "width": 200,
+    "height": 250,
+    "aspect": 0.8
+  },
+  "synth-back-08": {
+    "slug": "synth-back-08",
+    "width": 200,
+    "height": 250,
+    "aspect": 0.8
+  },
+  "synth-defect-01": {
+    "slug": "synth-defect-01",
+    "width": 229,
+    "height": 327,
+    "aspect": 0.7003
+  },
+  "synth-defect-02": {
+    "slug": "synth-defect-02",
+    "width": 214,
+    "height": 318,
+    "aspect": 0.673
+  },
+  "synth-defect-03": {
+    "slug": "synth-defect-03",
+    "width": 236,
+    "height": 332,
+    "aspect": 0.7108
+  },
+  "synth-defect-04": {
+    "slug": "synth-defect-04",
+    "width": 212,
+    "height": 316,
+    "aspect": 0.6709
+  },
+  "synth-defect-05": {
+    "slug": "synth-defect-05",
+    "width": 221,
+    "height": 322,
+    "aspect": 0.6863
+  },
+  "synth-defect-06": {
+    "slug": "synth-defect-06",
+    "width": 227,
+    "height": 326,
+    "aspect": 0.6963
+  },
   "cad-solid": {
     "slug": "cad-solid",
     "width": 660,
@@ -82,12 +244,6 @@
     "width": 1206,
     "height": 441,
     "aspect": 2.7347
-  },
-  "scheme-hw": {
-    "slug": "scheme-hw",
-    "width": 869,
-    "height": 320,
-    "aspect": 2.7156
   },
   "scheme-pipeline": {
     "slug": "scheme-pipeline",

@@ -28,7 +28,7 @@ Poslední aktualizace: **2026-08-05** (Hero QA pass — viz [visual-qa-hero-2026
 | A5 | GAN + Latent Navigator | `DONE` | Degradace vyřešena — `public/images/gan_generated/` doplněno (80 reálných GAN výstupů). `scripts/slice-latent.mjs` z nich staví plný 10×8 grid (viz `[r]-[c].webp`), `latent-navigator.js` COLS/ROWS aktualizováno na 10/8. Custom SVG diagram + plný 2D navigator s reálnými snímky |
 | A5-r1 | Latent Navigator — UX revize | `DONE` (2026-08-04) | Viz „A5-r1" níže. Layout viewer + panel side-by-side od 800px, výška řízená `--lv-size` (46vh cap) → celá podsekce se vejde na 1366×768 i 360×640. Efekt: lattice seřazená podle orientace/jasu + centrovaná (`slice-latent.mjs`), korektní bilineární alpha, crossfade band + detent snap na nejbližší node |
 | A6 | Compositing Deconstructor | `DONE` | **Degradace:** CSS bg + gan crops + procedurální blend + YOLO SVG overlay |
-| A7 | Particle Transition | `DONE` | Canvas 120×120 grid, pbr→gan; touch/reduced-motion CSS fallback |
+| A7 | Particle Transition | `DONE` | Canvas 120×120 grid, pbr→gan; touch/reduced-motion CSS fallback · **08-05 UX revize framů + dojezdu:** source je teď reálný Blender render (`cad_render.png`, dřív fotka `part_clean.png` = rozpor s labelem sekce), target `Image_0079` (stojí na výšku jako render + týž korozní defekt, takže se defekt během transformace „nehojí"), oba framy registrované na podíl plochy a centroid (52,4 / 52,5 %, IoU 0,72); oblouk dojíždí do 98 % místo 95 % (zmizelo ~9 vh mrtvého pinu), nástup 1,6 místo 2,2 (první desetina scrollu už není zmrazená), kolaps obráceným smoothstepem a pozice smootherstepem na témže okně → rozptyl i pozice dosednou spolu; krajní ostré framy se prolínají 2% rampou místo tvrdého přepnutí |
 | A8 | Measurement + gauges | `DONE` | **Degradace:** back side používá stejné hodnoty jako front (čeká na reálná data) |
 
 ## Vlna 3
@@ -160,3 +160,60 @@ Plausible (privacy-friendly, <1 KB) — pouze po schválení zadavatele.
 **Verifikováno headless Chrome (CDP)** na 360×640, 390×844, 768×1024, 820×1180, 1024×768, 1280×720, 1366×768, 1920×1080 — blok se všude vejde do jedné obrazovky. Simulovaný drag: během tažení `95 % + 1 more`, po uvolnění snap na node `7,5` a `single sample`. `prefers-reduced-motion`: bez attract, bez RAF, okamžitý update.
 
 **Velikost:** `latent-navigator.js` 2.7 KB gzip (bylo ~2.4 KB).
+
+---
+
+## PipelineBlender — redesign na rozložených assetech (2026-08-06)
+
+**Návrh:** [blender-redesign-2026-08-06.md](blender-redesign-2026-08-06.md) — tři varianty kompozice, zvolena „Žebřík".
+
+Sekce vkládala dva exporty prezentačních slidů (`scheme-hw` ze `scheme_1.png`, `pbr-render`
+z `pbr.png`) se zapečenými popisky, šipkami a světlými panely. Nahrazeno kompozicí ze
+rozložených assetů; všechny popisky jsou nativně v DOM.
+
+**Čtyři příčky jednoho argumentu** na společném svislém railu (týž prvek jako `.cad-steps`
+v DataGapu), jeden `<h2>`, `<h3>` na příčku sazbou jako mono label:
+
+| # | příčka | nese |
+|---|--------|------|
+| 01 | Virtualization | `stand-real` (fotka standu) \| `scene-twin` (Blender) — TÝŽ rig, HW specs jako `<dl>` |
+| 02 | Geometry → material | `material-split` (jeden díl, 40 % geometrie / 60 % PBR) + `mat-front` / `mat-back` |
+| 03 | Scale | 8 front + 8 back dlaždic + 6 defect cropů, readout `1 / 6,000 / 2 / 0` |
+| 04 | Verification | existující `.ab` blok, doslova nezměněný, `blender-bridge.js` dál běží |
+
+**Rozhodnutí a jejich důvody**
+
+| Rozhodnutí | Důvod |
+|---|---|
+| `chamber-render.png` (otevřený stage) NEPOUŽIT | jiné zařízení než uzavřená komora (dome light, bez krytu) → vedle sebe se čtou jako dva stroje. Zvolena komora, protože jen k ní existuje fotka reálné předlohy, takže příčka 01 je důkaz, ne tvrzení |
+| split geometrie/materiál je STATICKÝ | clay pass (`front-untextured.jpg`) pokrývá jen x 0→986 z kádru 1920, díl leží na 833→1244 → wipe by mohl jezdit přes 37 % šířky dílu a zbytek by musel lhát |
+| `material-split` složen v pipeline, ne vložen jak je | clay pass má pozadí luma 202 proti 28 u renderu; nová volba `compose` bere alfu z registrovaného `pbr-front-fingerprint` jako siluetu → světlé pozadí se odřízne a na `--bg-deep` zbyde jen díl |
+| `back-untextured.jpg` nepoužit | naměřeno luma 177–226 na celém kádru = plochá deska bez rysů |
+| dlaždice cropnuté 200×250 na naměřený střed | díl v nativních 480×300 zabíral 11 % plochy; po cropu 68 % výšky. Rotace ±25° zůstává, tvrzení o náhodné pozici nese readout |
+| vizuální vrchol = příčka 03 | jediný prvek v plné šířce, jediný s 22 obrazy. Příčka 04 zůstává tichá — nese argumentační dopad, ne crescendo |
+| readout `1 source scene` místo `auto pose · lighting` | slovo v sazbě `--fs-mono-lg` se vedle „6,000" čte jako chybějící hodnota; randomizace je tvrzení, ne metrika |
+
+**Assety:** 27 nových záznamů v `build-assets.mjs`, zdroje v `.claude/context/context_images/decomposed/`.
+Nová volba `compose { alphaFrom, over, splitX }` — jednoúčelová jako `alphaKey`, běží před
+`crop`; do `recipe` hashe jdou i mtime compose zdrojů. `scheme-hw` ze `ASSETS` odešel
+(nikdo ho nepoužívá), `pbr-render` zůstává — drží ho `Results.astro:7`.
+
+**JS:** žádný nový soubor. Mřížka jede na existujícím `data-reveal-group` staggeru;
+`lib/reveal.js` umí nově `data-reveal-stagger` na group (22 položek × 0.08 s = 1.76 s
+bylo moc, 0.03 s dá 0.66 s a čte se to jako dávka generování).
+
+**Verifikováno headless Chrome (CDP)** na 360, 768, 1366 a 1920 px:
+žádný horizontální overflow uvnitř sekce, 29 obrázků má width/height (bez layout shiftu),
+žádný se nezobrazuje nad nativní rozlišení, 22 dlaždic je `alt=""` (obsah nese sada,
+tvrzení je v `<figcaption>`). Struktura `H2 + 4× H3`. Při `prefers-reduced-motion`
+je viditelný veškerý obsah.
+
+### Nález mimo zadání
+
+`public/images/decomposed_svg/` (22 MB zdrojů včetně čtyř `_layout.svg` s embedded base64)
+se z `public/` kopírovalo do `dist/` — třetina celého buildu. Adresář **přesunut**, ne
+smazán, do `.claude/context/context_images/decomposed_svg_source/`; `dist` 64 MB → 42 MB.
+
+Zbývá otevřené: page-level horizontální overflow na 360/768 px z **jiných** sekcí —
+`DataGap` `.stat__glow` (`inset: -20 %` na radiálním glow, left −44 px) a `GuiDemo`
+`.gui-btn` na 360 px. Existovalo před tímhle úkolem, v sekci Blender žádný prvek nepřetéká.
