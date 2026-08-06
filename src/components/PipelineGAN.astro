@@ -1,96 +1,709 @@
 ---
 import LatentNavigator from './LatentNavigator.astro';
 import CompositingDeck from './CompositingDeck.astro';
-import Picture from './Picture.astro';
+
+/* Statistical learning: generative networks — druhá polovina Aktu II.
+
+   Sekce byla čtyři samostatné widgety pod jedním <h2> (framing, schéma, navigátor,
+   deck, tabulka) s velkými mezerami mezi nimi. Čtla se jako výčet prvků, ne jako
+   argument — a mezi <h2> a navigátorem visel `scheme-gan`, export prezentačního
+   slidu se zapečeným titulkem, šipkou, rámečky a Summary boxem (6000 / >99 / >95).
+   Ten box tvrdil čísla, která web už má nativně v Results.astro a DataGap.astro,
+   ve cizím fontu na světlém panelu ztlumeném na opacity 0.7 — tedy maskovaném,
+   ne designovaném. Odchází z týchž důvodů jako `scheme-hw` ze sekce Blender:
+   žádný rastr se zapečeným textem, šipkou ani rámečkem.
+
+   Místo něj stojí to, co v sekci reálně chybělo: DŮKAZ. Schéma tvrdí „tři modely",
+   ale nic to nedokládalo — první skutečný GAN výstup přišel až v navigátoru.
+   Triptych generátorů (příčka 01) ukazuje dvanáct reálných výstupů rozdělených
+   podle modelu, který je vyrobil, s nativními mono popisky.
+
+   Strukturu drží týž svislý rail s mono indexy jako PipelineBlender.astro
+   (.ladder / .rung) — obě poloviny Aktu II jsou tak čitelně sourozenci: stejná
+   kostra, jiný obsah. Vizuální kontrast engineered vs. organic nese materiál
+   uvnitř příček (tam schémata a kóty, tady mřížky vzorků a plynulé přechody),
+   ne jiná kostra.
+
+   Assety: dlaždice jsou už postavené výřezy z `public/images/latent/` (staví je
+   scripts/slice-latent.mjs z 80 reálných GAN výstupů, ~7 KB/kus, zarovnané na
+   centroid dílu). Reuse je záměrný — nepřidává gram do budgetu, jsou v cache
+   navigátoru pod tím a shodné zarovnání drží dlaždice v řádku klidné. */
+
+/* Klasifikace podle zdrojového souboru v latent/manifest.json:
+   Image_0000–0039 = tmavá litá strana (back), 0040–0059 = broušená strana
+   s výhlubky (front), 0060–0079 = front s fingerprintem = KOMPOZIT, ne surový
+   výstup fingerprint.pkl. Popisek to říká přesně tak — surové výstupy
+   fingerprint.pkl (128×128 samotné residuum) v assetech nemáme.
+
+   Ze každé skupiny čtyři vzorky s co nejrozdílnější orientací (sloupec v mřížce
+   = orientace hlavní osy), aby řádek tvrdil variabilitu, ne čtyři téměř shodné
+   snímky. Rozlišení modelů je z REDSME-2.md, nevymýšlené. */
+const GENERATORS = [
+  {
+    model: 'front.pkl',
+    meta: 'StyleGAN2-ADA · 256 × 256',
+    lane: 'lane a · carrier',
+    role: 'Brushed front side — counterbored holes, machining swirl. Carrier for the fingerprint composite.',
+    cells: ['4-2', '5-5', '6-7', '7-9'],
+    caption: 'Front-side samples — four of twenty.',
+  },
+  {
+    model: 'back.pkl',
+    meta: 'StyleGAN2-ADA · 256 × 256',
+    lane: 'lane b · direct',
+    role: 'Oxidized back side — plain holes, no counterbore. Trains the classifier as generated, no compositing pass.',
+    cells: ['0-0', '1-4', '2-7', '3-9'],
+    caption: 'Back-side samples — four of forty.',
+  },
+  {
+    model: 'fingerprint.pkl',
+    meta: 'StyleGAN2-ADA · 128 × 128',
+    lane: 'lane a · overlay',
+    role: 'Fingerprint residue, generated on its own and pressed onto the front side with pressure simulation and blend-mode variation.',
+    cells: ['4-0', '5-6', '6-4', '7-8'],
+    caption: 'Front side + composited residue — four of twenty.',
+  },
+];
+
+/* Srovnávací karty. Hodnoty jsou vlastnosti přístupu, ne měřené metriky —
+   metriky drží Results.astro a tady se neopakují. */
+const TRADEOFF = [
+  ['Speed', '~seconds / frame', '~milliseconds / frame'],
+  ['Input', 'CAD + physical setup', '~130 real photographs'],
+  ['Control', 'explicit — scene parameters', 'implicit — data distribution'],
+  ['Output', 'deterministic', 'stochastic'],
+];
 ---
 
 <section id="gan" class="pipeline-gan section" aria-labelledby="gan-heading">
   <div class="container">
     <h2 id="gan-heading" data-reveal>Statistical learning: generative networks</h2>
 
-    <div class="gan-framing" data-reveal>
-      <p class="gan-quote">Blender says: <em>“I know exactly what reality looks like, and I will reconstruct it from scratch.”</em></p>
-      <p class="gan-quote">GAN says: <em>“Show me 130 examples and I will learn what they have in common — and generate thousands more.”</em></p>
+    {/* Narativní pant sekce. Dřív dva odstavce „Blender says: … / GAN says: …"
+        v sazbě běžného textu, tedy dvě věty, které se čtou jako poznámka pod
+        nadpisem. Jsou to ale dvě konkurenční definice téhož problému — a dokud
+        to netvrdí sazba, netvrdí to nic. Dyptich: shodná struktura, mono eyebrow
+        s názvem přístupu, Blender ztlumený (dopovídá), GAN v --text-primary
+        s accent linkou (přebírá slovo). */}
+    <div class="voices" data-reveal-group>
+      <blockquote class="voice voice--past" data-reveal>
+        <p class="voice__label mono">01 · first principles</p>
+        <p class="voice__line">
+          “I know exactly what reality looks like, and I will reconstruct it from scratch.”
+        </p>
+        <footer class="voice__who mono">Blender</footer>
+      </blockquote>
+
+      <blockquote class="voice voice--now" data-reveal>
+        <p class="voice__label mono">02 · statistical learning</p>
+        <p class="voice__line">
+          “Show me 130 examples and I will learn what they have in common — and generate
+          thousands more.”
+        </p>
+        <footer class="voice__who mono">GAN</footer>
+      </blockquote>
     </div>
 
-    <div class="gan-diagram" data-gan-diagram aria-hidden="true">
-      <svg viewBox="0 0 800 200" class="gan-diagram__svg">
-        <rect x="20" y="60" width="120" height="40" rx="2" fill="var(--bg-surface)" stroke="var(--border)"/>
-        <text x="80" y="85" text-anchor="middle" fill="var(--text-secondary)" font-size="11" font-family="monospace">front.pkl</text>
-        <rect x="20" y="120" width="120" height="40" rx="2" fill="var(--bg-surface)" stroke="var(--border)"/>
-        <text x="80" y="145" text-anchor="middle" fill="var(--text-secondary)" font-size="11" font-family="monospace">back.pkl</text>
-        <rect x="20" y="10" width="120" height="40" rx="2" fill="var(--bg-surface)" stroke="var(--border)"/>
-        <text x="80" y="35" text-anchor="middle" fill="var(--text-secondary)" font-size="11" font-family="monospace">fingerprint.pkl</text>
-        <path d="M140 80 L280 100" stroke="var(--accent)" stroke-width="1" fill="none" data-flow-path/>
-        <path d="M140 140 L280 110" stroke="var(--accent)" stroke-width="1" fill="none" data-flow-path/>
-        <path d="M140 30 L280 90" stroke="var(--accent)" stroke-width="1" fill="none" data-flow-path/>
-        <rect x="280" y="70" width="140" height="60" rx="2" fill="var(--bg-surface)" stroke="var(--border)"/>
-        <text x="350" y="105" text-anchor="middle" fill="var(--text-secondary)" font-size="11" font-family="monospace">compositor</text>
-        <path d="M420 100 L560 100" stroke="var(--accent)" stroke-width="1" fill="none" data-flow-path/>
-        <rect x="560" y="60" width="180" height="80" rx="2" fill="var(--bg-surface)" stroke="var(--border)"/>
-        <text x="650" y="95" text-anchor="middle" fill="var(--text-secondary)" font-size="10" font-family="monospace">alpha blend +</text>
-        <text x="650" y="110" text-anchor="middle" fill="var(--text-secondary)" font-size="10" font-family="monospace">pressure sim</text>
-        <path d="M740 100 L780 100" stroke="var(--accent)" stroke-width="1" fill="none" data-flow-path/>
-        <text x="790" y="105" fill="var(--accent)" font-size="11" font-family="monospace">YOLO</text>
-      </svg>
-      <p class="sr-only">StyleGAN2-ADA models front, back, fingerprint feed compositor producing labeled output.</p>
-    </div>
+    <ol class="ladder">
+      {/* ── 01 — tři generátory: mapa + důkaz ─────────────────────────────── */}
+      <li class="rung" data-reveal-group data-reveal-stagger="0.04">
+        <div class="rung__head" data-reveal>
+          <span class="rung__idx mono" aria-hidden="true">01</span>
+          <h3 class="rung__title mono">Three generators</h3>
+        </div>
+        <p class="rung__claim" data-reveal>
+          Not one model that draws everything — three, each holding a single distribution.
+          Two of them are the part; the third is the defect, and only it needs compositing.
+        </p>
 
-    <Picture slug="scheme-gan" alt="GAN architecture reference" loading="lazy" class="gan-scheme-ref" />
+        {/* Mapa, ne ilustrace: co který model produkuje a kam to jde. Dvě dráhy,
+            protože pipeline dvě dráhy má — předchozí verze schématu sváděla
+            všechny tři modely do compositoru, což je věcně špatně: back.pkl jde
+            do YOLO tréninku bez kompozice (REDSME-2.md, sekce Data flow).
+            Zůstává inline SVG s [data-flow-path] — po nich při scrollu „tečou"
+            data (stroke-dashoffset, scrub) přes latent-navigator.js. */}
+        <div class="gan-map" data-reveal>
+          <div class="gan-map__scroll">
+            <svg viewBox="0 0 760 232" class="gan-map__svg" data-gan-diagram aria-hidden="true">
+              {/* vstupy */}
+              <g class="node">
+                <rect x="0" y="18" width="152" height="46" />
+                <text x="14" y="40" class="node__name">front.pkl</text>
+                <text x="14" y="55" class="node__meta">256²</text>
+              </g>
+              <g class="node">
+                <rect x="0" y="86" width="152" height="46" />
+                <text x="14" y="108" class="node__name">fingerprint.pkl</text>
+                <text x="14" y="123" class="node__meta">128²</text>
+              </g>
+              <g class="node">
+                <rect x="0" y="168" width="152" height="46" />
+                <text x="14" y="190" class="node__name">back.pkl</text>
+                <text x="14" y="205" class="node__meta">256²</text>
+              </g>
 
-    <div class="gan-block">
-      <h3 class="gan-subhead" data-reveal>Latent space navigator</h3>
-      <LatentNavigator />
-    </div>
+              {/* dráha A — kompozit */}
+              <path d="M152 41 L300 62" data-flow-path />
+              <path d="M152 109 L300 88" data-flow-path />
+              <g class="node node--work">
+                <rect x="300" y="45" width="164" height="60" />
+                <text x="314" y="70" class="node__name">compositor</text>
+                <text x="314" y="88" class="node__meta">11 ops · pressure sim</text>
+              </g>
+              <path d="M464 75 L560 96" data-flow-path />
 
-    <div class="gan-block">
-      <h3 class="gan-subhead" data-reveal>Compositing: five layers into one label</h3>
-      <CompositingDeck />
-    </div>
+              {/* dráha B — bez kompozice */}
+              <path d="M152 191 L520 191 L520 122 L560 122" data-flow-path />
 
-    <div class="gan-compare" data-reveal-group>
-      <article class="gan-card gan-card--blender">
-        <h4>Blender</h4>
-        <dl class="mono">
-          <div><dt>Speed</dt><dd>~seconds / frame</dd></div>
-          <div><dt>Input</dt><dd>CAD + physical setup</dd></div>
-          <div><dt>Control</dt><dd>Explicit (scene parameters)</dd></div>
-          <div><dt>Output</dt><dd>Deterministic</dd></div>
+              {/* výstup */}
+              <g class="node node--out">
+                <rect x="560" y="80" width="200" height="58" />
+                <text x="574" y="105" class="node__name">YOLO training set</text>
+                <text x="574" y="123" class="node__meta">.png + .txt label</text>
+              </g>
+
+              <text x="310" y="34" class="lane">lane a · composited</text>
+              <text x="162" y="182" class="lane">lane b · as generated</text>
+            </svg>
+          </div>
+          <p class="sr-only">
+            front.pkl and fingerprint.pkl feed a compositor that runs eleven operations
+            including pressure simulation; its output joins the YOLO training set as image
+            plus label file. back.pkl bypasses the compositor and enters the training set
+            as generated.
+          </p>
+        </div>
+
+        {/* Důkaz k mapě: dvanáct reálných výstupů, roztříděných podle modelu,
+            který je vyrobil. Dlaždice mají alt="" — obsah nese SADA, ne
+            jednotlivý snímek, a dvanáct téměř shodných popisů by odečítač
+            zahltil; tvrzení je ve <figcaption>, tedy v reálném textu. */}
+        <div class="gens">
+          {GENERATORS.map(({ model, meta, lane, role, cells, caption }) => (
+            <figure class="gen" data-reveal>
+              <header class="gen__head">
+                <h4 class="gen__model mono">{model}</h4>
+                <span class="gen__lane mono">{lane}</span>
+              </header>
+              <p class="gen__meta mono">{meta}</p>
+
+              <div class="gen__grid">
+                {cells.map((cell) => (
+                  <div class="gen__cell">
+                    <img
+                      src={`/images/latent/${cell}.webp`}
+                      alt=""
+                      width="256"
+                      height="256"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <figcaption class="gen__role">
+                {role}
+                <span class="gen__count mono">{caption}</span>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+
+        <p class="gens__note mono" data-reveal>
+          twelve of the eighty samples the navigator below walks through
+        </p>
+      </li>
+
+      {/* ── 02 — latent space ──────────────────────────────────────────────── */}
+      <li class="rung" data-reveal-group>
+        <div class="rung__head" data-reveal>
+          <span class="rung__idx mono" aria-hidden="true">02</span>
+          <h3 class="rung__title mono">Latent space</h3>
+        </div>
+        <p class="rung__claim" data-reveal>
+          The eighty samples are not the model — they are eighty points in a space the model
+          holds continuously. Every position between them is a part that was never rendered
+          and never photographed.
+        </p>
+        <LatentNavigator />
+      </li>
+
+      {/* ── 03 — kompozice ─────────────────────────────────────────────────── */}
+      <li class="rung rung--wide" data-reveal-group>
+        <div class="rung__head" data-reveal>
+          <span class="rung__idx mono" aria-hidden="true">03</span>
+          <h3 class="rung__title mono">Compositing</h3>
+        </div>
+        <p class="rung__claim" data-reveal>
+          Lane A, opened up: five layers, and the label falls out of the stack instead of
+          being drawn onto it.
+        </p>
+        <CompositingDeck />
+      </li>
+
+      {/* ── 04 — trade-off ─────────────────────────────────────────────────── */}
+      <li class="rung rung--payoff" data-reveal-group>
+        <div class="rung__head" data-reveal>
+          <span class="rung__idx mono" aria-hidden="true">04</span>
+          <h3 class="rung__title mono">Trade-off</h3>
+        </div>
+        <p class="rung__claim" data-reveal>
+          Neither approach replaced the other. They fail in opposite directions — and the
+          platform ships both.
+        </p>
+
+        {/* Sdílená osa vlastností vlevo, hodnoty ve dvou kolonách — čte se to jako
+            jedno srovnání, ne jako dvě karty, které se náhodou potkaly. Dvě
+            odděleně stylované karty s vlastními <dl> nutily oko skákat mezi
+            řádky a hledat, co je proti čemu. */}
+        <dl class="tradeoff mono" data-reveal>
+          <div class="tradeoff__head" aria-hidden="true">
+            <span></span>
+            <span class="tradeoff__col tradeoff__col--past">Blender</span>
+            <span class="tradeoff__col tradeoff__col--now">GAN</span>
+          </div>
+          {TRADEOFF.map(([axis, blender, gan]) => (
+            <div class="tradeoff__row">
+              <dt>{axis}</dt>
+              <dd class="tradeoff__val tradeoff__val--past">
+                <span class="tradeoff__mobile-label" aria-hidden="true">blender</span>
+                {blender}
+              </dd>
+              <dd class="tradeoff__val tradeoff__val--now">
+                <span class="tradeoff__mobile-label" aria-hidden="true">gan</span>
+                {gan}
+              </dd>
+            </div>
+          ))}
         </dl>
-      </article>
-      <article class="gan-card gan-card--gan">
-        <h4>GAN</h4>
-        <dl class="mono">
-          <div><dt>Speed</dt><dd>~ms / frame</dd></div>
-          <div><dt>Input</dt><dd>~130 real photos</dd></div>
-          <div><dt>Control</dt><dd>Implicit (data distribution)</dd></div>
-          <div><dt>Output</dt><dd>Stochastic</dd></div>
-        </dl>
-      </article>
-    </div>
+      </li>
+    </ol>
   </div>
 </section>
 
 <style>
-  .pipeline-gan { background: var(--bg-primary); }
-  .pipeline-gan h2 { margin-bottom: var(--space-6); }
-  .gan-framing { margin-bottom: var(--space-8); color: var(--text-secondary); }
-  .gan-quote { margin-bottom: var(--space-4); max-width: 60ch; }
-  .gan-diagram__svg { width: 100%; height: auto; margin-block: var(--space-6); }
-  .gan-scheme-ref { max-width: 600px; margin: var(--space-6) auto; opacity: 0.7; }
-  .gan-subhead { font-size: var(--fs-h3); margin: 0 0 var(--space-5); }
-  .gan-block { margin-top: var(--space-10); }
-  /* Short viewports: the navigator block must still read as one screen. */
-  @media (max-height: 800px) {
-    .gan-block { margin-top: var(--space-8); }
-    .gan-subhead { margin-bottom: var(--space-4); }
+  .pipeline-gan {
+    background: var(--bg-primary);
   }
-  .gan-compare { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); margin-top: var(--space-10); }
-  .gan-card { background: var(--bg-surface); border: 1px solid var(--border); padding: var(--space-6); transition: border-color 0.2s, box-shadow 0.2s; }
-  .gan-card:hover { border-color: var(--border-hover); box-shadow: 0 0 40px var(--accent-glow); }
-  .gan-card h4 { margin-bottom: var(--space-4); font-family: var(--font-display); }
-  .gan-card dl div { display: flex; justify-content: space-between; padding: var(--space-2) 0; border-bottom: 1px solid var(--border); font-size: var(--fs-mono-sm); }
-  .gan-card dt { color: var(--text-muted); }
-  .gan-card dd { color: var(--text-secondary); }
-  @media (max-width: 768px) { .gan-compare { grid-template-columns: 1fr; } }
+  .pipeline-gan h2 {
+    margin-bottom: var(--space-6);
+  }
+
+  /* ── Dyptich dvou hlasů ──────────────────────────────────────────────────── */
+  .voices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+    max-width: 1100px;
+    margin-bottom: var(--space-9);
+  }
+  .voice {
+    position: relative;
+    margin: 0;
+    padding: var(--space-5) 0 0 var(--space-5);
+    border-top: 1px solid var(--border);
+  }
+  /* Krátká svislá značka u hrany: Blender ztlumeně, GAN v accentu — hierarchie
+     dvou hlasů je v barvě a v jasu textu, ne ve velikosti. */
+  .voice::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 0;
+    width: 1px;
+    height: var(--space-6);
+  }
+  .voice--past::before {
+    background: var(--text-muted);
+  }
+  .voice--now::before {
+    background: var(--accent);
+  }
+  .voice--now {
+    border-top-color: var(--accent);
+  }
+  .voice__label {
+    margin: 0 0 var(--space-4);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .voice--now .voice__label {
+    color: var(--accent-light);
+  }
+  .voice__line {
+    margin: 0 0 var(--space-4);
+    max-width: 34ch;
+    font-family: var(--font-display);
+    font-size: clamp(1.125rem, 1.1vw + 0.85rem, 1.6rem);
+    line-height: 1.4;
+    text-wrap: balance;
+    color: var(--text-secondary);
+  }
+  .voice--now .voice__line {
+    color: var(--text-primary);
+  }
+  .voice__who {
+    font-size: var(--fs-mono-sm);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* ── Rail (týž prvek jako .ladder v PipelineBlender.astro) ───────────────── */
+  .ladder {
+    position: relative;
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 var(--space-7);
+  }
+  .ladder::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.55em;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(
+      to bottom,
+      var(--border-hover) 0,
+      var(--border-hover) calc(100% - 200px),
+      transparent 100%
+    );
+  }
+  .rung {
+    position: relative;
+  }
+  .rung + .rung {
+    margin-top: var(--space-10);
+  }
+  .rung__head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+  }
+  .rung__head::before {
+    content: '';
+    position: absolute;
+    left: calc(-1 * var(--space-7) - 3px);
+    top: 0.4em;
+    width: 7px;
+    height: 7px;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-glow);
+  }
+  .rung__idx {
+    font-size: var(--fs-mono-md);
+    color: var(--accent);
+  }
+  .rung__title {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-mono-md);
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+  }
+  .rung__claim {
+    max-width: 58ch;
+    margin: 0 0 var(--space-6);
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+
+  /* ── 01 — mapa ───────────────────────────────────────────────────────────── */
+  /* Schéma je záměrně skromné: nese topologii, ne wow efekt — ten obstarává
+     materiál pod ním. Pod 720px se posouvá vodorovně; zmenšit ho na šířku
+     mobilu znamená sazbu pod 9 px, tedy nečitelnou mapu. */
+  .gan-map {
+    max-width: 880px;
+    margin-bottom: var(--space-8);
+  }
+  .gan-map__scroll {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+  .gan-map__svg {
+    display: block;
+    width: 100%;
+    min-width: 620px;
+    height: auto;
+  }
+  .gan-map__svg .node rect {
+    fill: var(--bg-surface);
+    stroke: var(--border-hover);
+    stroke-width: 1;
+  }
+  .gan-map__svg .node--work rect {
+    fill: var(--bg-elevated);
+  }
+  .gan-map__svg .node--out rect {
+    stroke: var(--accent);
+    fill: var(--bg-elevated);
+  }
+  .gan-map__svg .node__name {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    fill: var(--text-primary);
+  }
+  .gan-map__svg .node--out .node__name {
+    fill: var(--accent-light);
+  }
+  .gan-map__svg .node__meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    fill: var(--text-muted);
+  }
+  .gan-map__svg .lane {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    fill: var(--text-muted);
+  }
+  .gan-map__svg [data-flow-path] {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1;
+  }
+
+  /* ── 01 — triptych generátorů ────────────────────────────────────────────── */
+  .gens {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-5);
+  }
+  .gen {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin: 0;
+    padding: var(--space-4) var(--space-4) var(--space-5);
+    background: var(--glass);
+    border: 1px solid var(--border);
+    transition: border-color var(--dur-base) var(--ease-out);
+  }
+  .gen:hover {
+    border-color: var(--border-hover);
+  }
+  .gen__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .gen__model {
+    margin: 0;
+    font-size: var(--fs-mono-md);
+    font-weight: 400;
+    color: var(--accent-light);
+  }
+  .gen__lane {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .gen__meta {
+    margin: 0;
+    font-size: var(--fs-mono-sm);
+    color: var(--text-muted);
+  }
+  /* Mřížka 2×2 na --bg-deep: výstupy mají sloučené pozadí na tutéž hodnotu,
+     takže díl na dlaždici plave bez viditelného kádru — přesně ten „organic"
+     jazyk, který má stát proti kótovaným rámům sekce Blender. */
+  .gen__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+  .gen__cell {
+    aspect-ratio: 1;
+    background: var(--bg-deep);
+    overflow: hidden;
+  }
+  .gen__cell img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* Vzorky jsou surové výstupy generátoru — ne inspekční snímky. Drobné
+       ztlumení je drží jako materiál a nechává vyhrát navigátor pod nimi. */
+    opacity: 0.92;
+    transition: opacity var(--dur-base) var(--ease-out);
+  }
+  .gen:hover .gen__cell img {
+    opacity: 1;
+  }
+  .gen__role {
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+  .gen__count {
+    display: block;
+    margin-top: var(--space-2);
+    font-size: var(--fs-mono-sm);
+    color: var(--text-muted);
+  }
+  .gens__note {
+    /* Globální p { max-width: 65ch } je měřítko pro čtený text; tenhle řádek je
+       mono readout k mřížce nad ním a nesmí se lámat. */
+    max-width: none;
+    margin: var(--space-4) 0 0;
+    font-size: var(--fs-mono-sm);
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+
+  /* ── 03 — deck potřebuje plnou šířku příčky ─────────────────────────────── */
+  .rung--wide {
+    /* Deck je nejširší prvek sekce; rail mu nesmí ubrat plochu na úzkých
+       displejích, kde je každý pixel šířky vidět na vrstvách. */
+    margin-inline-start: calc(-1 * var(--space-5));
+  }
+  .rung--wide > .rung__head,
+  .rung--wide > .rung__claim {
+    margin-inline-start: var(--space-5);
+  }
+
+  /* ── 04 — trade-off ─────────────────────────────────────────────────────── */
+  .tradeoff {
+    --axis: 120px;
+    margin: 0;
+    max-width: 900px;
+    border-top: 1px solid var(--border);
+  }
+  .tradeoff__head,
+  .tradeoff__row {
+    display: grid;
+    grid-template-columns: var(--axis) 1fr 1fr;
+    gap: var(--space-5);
+    align-items: baseline;
+    padding-block: var(--space-4);
+    border-bottom: 1px solid var(--border);
+  }
+  .tradeoff__head {
+    padding-block: var(--space-3);
+  }
+  .tradeoff__col {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .tradeoff__col--past {
+    color: var(--text-muted);
+  }
+  .tradeoff__col--now {
+    color: var(--accent-light);
+  }
+  .tradeoff dt {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .tradeoff dd {
+    margin: 0;
+    font-size: var(--fs-mono-sm);
+  }
+  .tradeoff__val--past {
+    color: var(--text-secondary);
+  }
+  /* GAN kolona nese pokračování kontrastu z dyptichu: tentýž accent, tentýž
+     důvod — je to hlas, který v Aktu II mluví naposled. */
+  .tradeoff__val--now {
+    color: var(--text-primary);
+    box-shadow: inset 1px 0 0 rgba(123, 110, 246, 0.4);
+    padding-inline-start: var(--space-4);
+  }
+  .tradeoff__mobile-label {
+    display: none;
+  }
+  .tradeoff__row:hover .tradeoff__val--now {
+    box-shadow: inset 1px 0 0 var(--accent);
+  }
+
+  /* ── Responsive ──────────────────────────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .voices {
+      grid-template-columns: 1fr;
+      gap: var(--space-5);
+      margin-bottom: var(--space-8);
+    }
+    /* Triptych se na tabletu láme na 1 + 2: front.pkl je nosič kompozitu,
+       takže dostane plnou šířku a čte se jako výchozí bod dvou drah. */
+    .gens {
+      grid-template-columns: 1fr 1fr;
+    }
+    .gen:first-child {
+      grid-column: 1 / -1;
+    }
+    .gen:first-child .gen__grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .ladder {
+      padding-left: var(--space-6);
+    }
+    .rung__head::before {
+      left: calc(-1 * var(--space-6) - 3px);
+    }
+    .rung + .rung {
+      margin-top: var(--space-9);
+    }
+    .rung--wide {
+      margin-inline-start: calc(-1 * var(--space-6));
+    }
+    .rung--wide > .rung__head,
+    .rung--wide > .rung__claim {
+      margin-inline-start: var(--space-6);
+    }
+    .gens {
+      grid-template-columns: 1fr;
+    }
+    .gen:first-child .gen__grid,
+    .gen .gen__grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+    /* Tři kolony srovnání se na mobilu nevejdou; místo vodorovného scrollu
+       se řádek láme na osu + dvě hodnoty pod sebou, každá s vlastním
+       popiskem — jinak by se ztratilo, která hodnota patří kterému přístupu. */
+    .tradeoff__head {
+      display: none;
+    }
+    .tradeoff__row {
+      grid-template-columns: 1fr;
+      gap: var(--space-2);
+    }
+    .tradeoff__mobile-label {
+      display: inline;
+      margin-right: var(--space-3);
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .tradeoff__val--now {
+      padding-inline-start: var(--space-3);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .gen,
+    .gen__cell img,
+    .tradeoff__val--now {
+      transition: none;
+    }
+  }
 </style>

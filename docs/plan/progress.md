@@ -217,3 +217,76 @@ smazán, do `.claude/context/context_images/decomposed_svg_source/`; `dist` 64 M
 Zbývá otevřené: page-level horizontální overflow na 360/768 px z **jiných** sekcí —
 `DataGap` `.stat__glow` (`inset: -20 %` na radiálním glow, left −44 px) a `GuiDemo`
 `.gui-btn` na 360 px. Existovalo před tímhle úkolem, v sekci Blender žádný prvek nepřetéká.
+
+---
+
+## Redesign sekce GAN — 2026-08-06
+
+**Spouštěč:** mezi `<h2>` „Statistical learning: generative networks" a nadpisem
+„Latent space navigator" visel `scheme-gan` — export prezentačního slidu se zapečeným
+titulkem „AI-Based Predictions with Synth.Eye", šipkou, rámečky a Summary boxem
+(6000 / >99 % / >95 %). Týž případ jako `scheme-hw` v sekci Blender: cizí font na světlém
+panelu ztlumeném `opacity: 0.7`, a čísla, která web už drží nativně v `Results.astro`
+a `DataGap.astro`.
+
+**Co odešlo:** `scheme-gan` ze `ASSETS` i z `public/images/` (`scheme_3.png` zůstává
+v kontextu). V `ASSETS` už není žádný export slidu kromě `gan-output` a `pbr-render`.
+
+**Co přišlo místo něj — příčka 01 „Three generators":**
+
+| Prvek | Obsah |
+|---|---|
+| mapa (inline SVG) | dvě dráhy: front + fingerprint → compositor → YOLO set, back **mimo** compositor |
+| triptych | 3 karty `front.pkl` / `back.pkl` / `fingerprint.pkl`, každá 4 reálné výstupy + mono meta |
+
+Dlaždice jsou existující výřezy z `public/images/latent/` (~7 KB/kus, zarovnané na centroid),
+takže triptych nepřidal do budgetu nic a snímky jsou v cache navigátoru pod ním.
+Klasifikace podle `latent/manifest.json`: `Image_0000–0039` back, `0040–0059` front,
+`0060–0079` front **+ kompozit** fingerprintu (surové 128² residuum v assetech není —
+popisek to říká přesně tak).
+
+**Struktura:** sekce byla čtyři samostatné widgety pod jedním `<h2>`. Teď drží týž rail
+s mono indexy jako `PipelineBlender.astro` (`.ladder` / `.rung`, 01 generators →
+02 latent space → 03 compositing → 04 trade-off), takže obě poloviny Aktu II jsou
+čitelně sourozenci. Framing dvou hlasů („Blender says / GAN says") byl dvakrát běžný
+odstavec → dyptich s mono eyebrow, ztlumený Blender vs. GAN v `--text-primary` s accent
+linkou. Srovnávací tabulka byla dvě karty s vlastními `<dl>` (oko muselo hledat, co je
+proti čemu) → jedna osa vlastností a dvě kolony hodnot.
+
+**Rozhodnutí a jejich důvody**
+
+| Rozhodnutí | Důvod |
+|---|---|
+| mapa má DVĚ dráhy, ne 3→1 | předchozí schéma svádělo i `back.pkl` do compositoru — věcně špatně, back jde do YOLO tréninku bez kompozice (`REDSME-2.md`) |
+| mapa zůstala SVG s vodorovným scrollem pod 620 px | zmenšit ji na šířku mobilu = sazba pod 9 px; DOM varianta by musela replikovat elbow spojnice v CSS |
+| dvanáct dlaždic, ne 80 | 80 je práce navigátoru; karty tvrdí „tři distribuce", ne „hodně snímků". Readout pod nimi ten vztah pojmenuje |
+| metriky se v sekci NEopakují | `>99 / >95 / 6 000` drží Results a DataGap; slide je tvrdil podruhé a to byl půl důvodu, proč působil jako cizí těleso |
+
+### Nález mimo zadání — CompositingDeck
+
+Deck bral všechny tři obrazové vrstvy z `gan-output.webp` (list „Example outputs:")
+a řezal je `object-position`. `layer_1` s `0% 0%` padl přesně na zapečený titulek, takže
+deck ukazoval „**Example outputs:**" jako vrstvu kompozice; YOLO boxy vrstvy `layer_4`
+navíc visely mimo díl. Opraveno v `CompositingDeck.astro` + `build-assets.mjs`:
+
+- tři nové assety `gan-front` / `gan-composite` / `gan-back` — kvadratické cropy 340²
+  kolem naměřených bboxů dílů (jas > 60: `181–405`, `496–694`, `782–1032`, y `87–384`),
+  titulek je mimo kádr
+- kádr decku je `aspect-ratio: 1` (všechny reálné výstupy jsou 1:1; při 4/3 cover crop
+  odřezával dílu horní hranu, a s ní i horní kótu bounding boxu)
+- boxy naměřené na `gan-composite`: díl `20.5 / 6 / 59 / 88 %`, fingerprint (r − b > 55)
+  `24.5 / 6 / 14.5 / 20.5 %`; labely dostaly `paint-order: stroke` kvůli čitelnosti
+  nad světlým kovem
+
+`initDiagramAnimation()` v `latent-navigator.js` navíc nerespektoval
+`prefers-reduced-motion` — mapa se scrubovala i tam, kde má být nakreslená hotová.
+Doplněn guard.
+
+**Verifikováno headless Chrome (CDP)** na 360, 768 a 1440 px s `prefers-reduced-motion`:
+`document.scrollWidth == innerWidth` na všech třech (mimo vlastní scroll container mapy),
+struktura `H2 + 4× H3`, dlaždice `alt=""` s tvrzením ve `<figcaption>`, karty triptychu
+mají shodnou výšku (594 px na 1440).
+
+**Zbývá otevřené:** `Results.astro:5–6` bere `gan-output` s `object-position: 0% 0%`
+a `50% 0%` — týž list se zapečeným titulkem. Nové assety `gan-front` / `gan-composite`
+jsou přímo k tomu použitelné, ale je to jiná sekce, tak to nechávám na pokyn.

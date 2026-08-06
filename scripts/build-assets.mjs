@@ -292,12 +292,27 @@ const ASSETS = [
   { src: path.join(CONTEXT, 'context_images', 'cad_light.png'), slug: 'cad-light', max: 900, crop: { left: 594, top: 125, width: 660, height: 825 } },
   { src: path.join(CONTEXT, 'context_images', 'cad_render.png'), slug: 'cad-render', max: 900, crop: { left: 594, top: 125, width: 660, height: 825 } },
   { src: path.join(CONTEXT, 'context_images', 'GAN_output.png'), slug: 'gan-output', max: 1600 },
+  // ── Jednotlivé GAN výstupy z listu „Example outputs" ─────────────────────
+  // GAN_output.png je list tří výstupů s NAPEČENÝM titulkem vlevo nahoře.
+  // CompositingDeck ho vkládal celý a vrstvy z něj brala object-position:
+  // layer_1 s `0% 0%` padl přesně na ten titulek, takže deck ukazoval
+  // „Example outputs:" jako vrstvu kompozice. Naměřené bboxy dílů (jas > 60,
+  // pod titulkem): 181–405, 496–694, 782–1032 px, všechny y 87–384.
+  // Kvadratické cropy 340² kolem středů: text je mimo kádr a díl leží ve všech
+  // třech na stejném místě, takže se vrstvy v decku kryjí.
+  { src: path.join(CONTEXT, 'context_images', 'GAN_output.png'), slug: 'gan-front', max: 512, crop: { left: 123, top: 65, width: 340, height: 340 } },
+  { src: path.join(CONTEXT, 'context_images', 'GAN_output.png'), slug: 'gan-composite', max: 512, crop: { left: 425, top: 65, width: 340, height: 340 } },
+  { src: path.join(CONTEXT, 'context_images', 'GAN_output.png'), slug: 'gan-back', max: 512, crop: { left: 737, top: 68, width: 340, height: 340 } },
   // scheme_1.png (slug scheme-hw) tu byl pro sekci Blender. Byl to export slidu se
   // zapečenými popisky, šipkami a světlými panely — na --bg-deep se čet jako
   // naskenovaná paper figure. Redesign sekce ho nahradil párem stand-real /
   // scene-twin s popisky nativně v DOM, takže záznam odešel.
   { src: path.join(CONTEXT, 'context_images', 'scheme_2.png'), slug: 'scheme-pipeline', max: 1600 },
-  { src: path.join(CONTEXT, 'context_images', 'scheme_3.png'), slug: 'scheme-gan', max: 1600 },
+  // scheme_3.png (slug scheme-gan) byl doplňkový vizuál v sekci GAN. Týž případ
+  // jako scheme-hw: export slidu se zapečeným titulkem, šipkou, rámečky a Summary
+  // boxem, který tvrdil 6000 / >99 / >95 — čísla, co web už drží nativně
+  // v Results.astro. Redesign sekce ho nahradil triptychem generátorů z reálných
+  // GAN výstupů (public/images/latent/*), takže záznam odešel.
   { src: path.join(CONTEXT, 'context_images', 'measurement.png'), slug: 'measure-front', max: 1600 },
   { src: path.join(CONTEXT, 'context_images', 'measurement_back.png'), slug: 'measure-back', max: 1600 },
   { src: path.join(CONTEXT, 'context_images', 'industry.png'), slug: 'industry', max: 1600 },

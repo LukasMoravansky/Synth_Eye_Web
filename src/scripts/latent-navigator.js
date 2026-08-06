@@ -16,6 +16,9 @@ function initDiagramAnimation() {
   const diagram = document.querySelector('[data-gan-diagram]');
   if (!diagram || diagram.dataset.flowAnimated === 'true') return;
   diagram.dataset.flowAnimated = 'true';
+  /* Reduced motion: the map is drawn finished. Scrubbing the flow would be the
+     only reason to scroll it, and the topology is the whole information. */
+  if (prefersReducedMotion()) return;
   diagram.querySelectorAll('[data-flow-path]').forEach((path) => {
     const len = path.getTotalLength?.() || 100;
     path.style.strokeDasharray = String(len);

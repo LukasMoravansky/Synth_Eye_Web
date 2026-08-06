@@ -245,17 +245,29 @@
     "height": 441,
     "aspect": 2.7347
   },
+  "gan-front": {
+    "slug": "gan-front",
+    "width": 340,
+    "height": 340,
+    "aspect": 1
+  },
+  "gan-composite": {
+    "slug": "gan-composite",
+    "width": 340,
+    "height": 340,
+    "aspect": 1
+  },
+  "gan-back": {
+    "slug": "gan-back",
+    "width": 340,
+    "height": 340,
+    "aspect": 1
+  },
   "scheme-pipeline": {
     "slug": "scheme-pipeline",
     "width": 1191,
     "height": 658,
     "aspect": 1.81
-  },
-  "scheme-gan": {
-    "slug": "scheme-gan",
-    "width": 1200,
-    "height": 570,
-    "aspect": 2.1053
   },
   "measure-front": {
     "slug": "measure-front",

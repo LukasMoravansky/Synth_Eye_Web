@@ -13,12 +13,15 @@
   </ol>
   <div class="compositing-deck__stage" data-deck-stage>
     <button type="button" class="deck-layer deck-layer--0" data-layer="0" aria-label="layer_0 · camera_background · chroma green"><span class="deck-layer__bg"></span><span class="deck-layer__tab mono">layer_0 · camera_background</span></button>
-    <button type="button" class="deck-layer deck-layer--1" data-layer="1" aria-label="layer_1 · front.pkl → object"><img src="/images/gan-output.webp" alt="" style="object-position: 0% 0%" /><span class="deck-layer__tab mono">layer_1 · front.pkl</span></button>
-    <button type="button" class="deck-layer deck-layer--2" data-layer="2" aria-label="layer_2 · fingerprint.pkl → defect"><img src="/images/gan-output.webp" alt="" style="object-position: 50% 50%; mix-blend-mode:multiply; opacity:0.7" /><span class="deck-layer__tab mono">layer_2 · fingerprint.pkl</span></button>
+    <button type="button" class="deck-layer deck-layer--1" data-layer="1" aria-label="layer_1 · front.pkl → object"><img src="/images/gan-front.webp" alt="" /><span class="deck-layer__tab mono">layer_1 · front.pkl</span></button>
+    <button type="button" class="deck-layer deck-layer--2" data-layer="2" aria-label="layer_2 · fingerprint.pkl → defect"><img src="/images/gan-composite.webp" alt="" style="mix-blend-mode:multiply; opacity:0.7" /><span class="deck-layer__tab mono">layer_2 · fingerprint.pkl</span></button>
     <button type="button" class="deck-layer deck-layer--3" data-layer="3" aria-label="layer_3 · alpha_blend + pressure_sim"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><radialGradient id="pressure"><stop offset="0%" stop-color="rgba(123,110,246,0.3)"/><stop offset="100%" stop-color="transparent"/></radialGradient></defs><rect width="100" height="100" fill="url(#pressure)" style="mix-blend-mode:overlay"/></svg><span class="deck-layer__tab mono">layer_3 · alpha_blend</span></button>
     <button type="button" class="deck-layer deck-layer--4" data-layer="4" aria-label="layer_4 · composite + yolo_labels">
-      <img src="/images/gan-output.webp" alt="" style="object-position: 0% 0%" />
-      <svg class="deck-yolo" viewBox="0 0 100 100" aria-hidden="true"><rect x="22" y="18" width="52" height="64" fill="none" stroke="var(--ok)" stroke-width="0.5"/><text x="22" y="16" font-size="3" fill="var(--ok)" font-family="monospace">Cls_Obj_Front_Side 93.15%</text><rect x="40" y="45" width="12" height="10" fill="none" stroke="var(--nok)" stroke-width="0.5"/><text x="40" y="43" font-size="2.5" fill="var(--nok)" font-family="monospace">Cls_Defect_Fingerprint 92.93%</text></svg>
+      <img src="/images/gan-composite.webp" alt="" />
+      {/* Boxy jsou naměřené na assetu gan-composite (crop 340² z GAN_output.png):
+          díl jas > 60 → 20.5 / 6 / 59 / 88 %, fingerprint (r − b > 55) →
+          24.5 / 6 / 14.5 / 20.5 %. Bez toho visely nad prázdným kádrem. */}
+      <svg class="deck-yolo" viewBox="0 0 100 100" aria-hidden="true"><rect x="20.5" y="6" width="59" height="88" fill="none" stroke="var(--ok)" stroke-width="0.5"/><text x="20.5" y="4.6" font-size="3" fill="var(--ok)" font-family="monospace" stroke="rgba(8,8,12,0.85)" stroke-width="0.7" paint-order="stroke">Cls_Obj_Front_Side 93.15%</text><rect x="24.5" y="6" width="14.5" height="20.5" fill="none" stroke="var(--nok)" stroke-width="0.5"/><text x="24.5" y="29.5" font-size="2.5" fill="var(--nok)" font-family="monospace" stroke="rgba(8,8,12,0.85)" stroke-width="0.7" paint-order="stroke">Cls_Defect_Fingerprint 92.93%</text></svg>
       <span class="deck-layer__tab mono">layer_4 · composite + yolo</span>
     </button>
   </div>
@@ -34,7 +37,10 @@
   .compositing-deck { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-7) 0; }
   /* -36px = rezerva na odsazení stacku (layer_4 je translate(32px)), jinak
      nejvyšší vrstva přetéká viewport a stránka scrolluje do strany. */
-  .compositing-deck__stage { position: relative; width: min(calc(90vw - 36px), 520px); aspect-ratio: 4/3; }
+  /* Kádr je kvadratický, protože všechny reálné GAN výstupy jsou 1:1. Při 4/3
+     cover crop odřezával dílu horní a spodní hranu — a s ní i horní kótu
+     bounding boxu, tedy to jediné, co má vrstva layer_4 dokazovat. */
+  .compositing-deck__stage { position: relative; width: min(calc(90vw - 36px), 460px); aspect-ratio: 1; }
   .deck-layer {
     position: absolute; inset: 0;
     border: 1px solid var(--border);
