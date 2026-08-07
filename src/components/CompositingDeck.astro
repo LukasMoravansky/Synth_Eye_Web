@@ -1,31 +1,301 @@
 ---
-/* Sub-component — Compositing Deconstructor (A6) */
+/* Compositing Deconstructor — lane A rozebraná na jednom reálném běhu.
+ *
+ * Předchozí verze skládala pět vrstev ze dvou různých seedů (gan-front /
+ * gan-composite), alpha vrstvu malovala radiálním gradientem v SVG a YOLO boxy
+ * měla doměřené z pixelů hotového kompozitu. Tvrdila tedy rozklad, který se
+ * nikdy nestal, a labely kreslila na stack místo aby je z něj odvodila — tedy
+ * pravý opak claimu příčky.
+ *
+ * Teď jsou to čtyři mezikroky JEDNOHO běhu compositoru (seed 0050) plus jeho
+ * label soubor. Zdroje v .claude/context/context_images/lane-a/, slugy
+ * lane-a-* staví scripts/build-assets.mjs.
+ *
+ * Chybí surový carrier: `front.pkl` výstup PŘED kompozicí pro tenhle seed
+ * v assetech není, takže nosič vstupuje až ve vrstvě 03 už spojený s otiskem.
+ * Až se vyexportuje, přibude sem šestá vrstva mezi 01 a 02 (přidání = jeden
+ * záznam v LAYERS + jedna dlaždice v markupu) a claim v PipelineGAN.astro se
+ * z „five layers" přepíše na šest.
+ *
+ * ── geometrie (přepis 2026-08-07) ────────────────────────────────────────
+ * Předchozí rozvržení mělo vrstvu ve velikosti kádru (460 px) a rozestup
+ * 86 px, tedy 81% překryv — z každé vrstvy byl vidět proužek a label vrstva
+ * ležela ze 72 % NA kompozitu. Tvrzení příčky („label vypadává ze stacku,
+ * není na něj nakreslený") tak vizuálně říkalo přesný opak: zelený i červený
+ * box se četly jako anotace obtažená kolem dílu.
+ *
+ * Teď je vrstva menší než kádr (--frame, počítá se z šířky sloupce A z výšky
+ * viewportu, viz compositing-deck.js) a rozestupy jsou v poměru k ní:
+ *
+ *   mezi obrazovými vrstvami   0.46 × frame  → překryv 54 %, spodních 46 %
+ *                                              každé vrstvy je čisté (a právě
+ *                                              tam leží paste rect i otisk)
+ *   navíc pod label vrstvu     0.72 × frame  → 1.18 × frame od kompozitu,
+ *                                              tedy ČISTÝ VZDUCH mezi nimi
+ *
+ * Ten vzduch je celý point: label je jediná vrstva, která se stackem nikde
+ * nepřekrývá — dva obdélníky na holém pozadí, ne kresba přes snímek.
+ *
+ * Rozklad je souměrný kolem středu kádru (vrstva 02 stojí, 00 klesá, 04
+ * stoupá), takže složený i rozložený stav sedí ve STEJNĚ vysokém boxu.
+ * Výška prvku se tedy během scrubu nemění — dřív rostla přes margin-top,
+ * což posouvalo start/end vlastnímu ScrollTriggeru.
+ */
+
+const LANE_A_LABEL = 'composite.txt';
+
+/* Řádky JSOU obsah .claude/context/context_images/lane-a/composite.txt, opsané
+ * beze změny. Nic se tu nedopočítává — a je to ověřitelné:
+ *
+ *   Řádek třídy 0 se na šest desetinných míst shoduje s alfa siluetou dílu
+ *   v composite.png (naměřený bbox x 26→216, y 0→255 v kádru 256²). Label
+ *   objektu tedy není nález detektoru, ale geometrie kompozice.
+ *
+ *   Řádek třídy 2 dává v kádru 256² obdélník 70 × 65 px na (147,183). Poměr
+ *   k nativnímu tvaru otisku (fingerprint-alpha, 116 × 107) je 0.603 a 0.607,
+ *   tedy jednotné měřítko v obou osách — box je paste rect, ne obtažení nálezu.
+ *   Proto vrstva 02 kreslí otisk PŘESNĚ do tohoto rámečku: nemá vedle sebe
+ *   ležet ilustrace, ale ten samý obdélník, který o řádek výš vyjde jako label.
+ */
+const LABEL_ROWS = [
+  {
+    cls: 0,
+    name: 'Cls_Obj_Front_Side',
+    cx: 0.474609,
+    cy: 0.5,
+    w: 0.746094,
+    h: 1,
+    tone: 'ok',
+    /* z které vrstvy souřadnice pocházejí — tah za tu vrstvu boxem hýbe */
+    from: 'composite',
+    derivation: 'alpha silhouette of the composited part',
+  },
+  {
+    cls: 2,
+    name: 'Cls_Defect_Fingerprint',
+    cx: 0.710938,
+    cy: 0.841797,
+    w: 0.273438,
+    h: 0.253906,
+    tone: 'nok',
+    from: 'paste',
+    derivation: 'the rectangle the shaped print was pasted into',
+  },
+];
+
+const defect = LABEL_ROWS[1];
+/* Paste rect v procentech kádru — sdílí ho vrstva 02 (kam se otisk položil)
+   i vrstva 04 (co se o tom zapsalo). Jedno číslo, dvě vrstvy. */
+const PASTE = {
+  left: (defect.cx - defect.w / 2) * 100,
+  top: (defect.cy - defect.h / 2) * 100,
+  width: defect.w * 100,
+  height: defect.h * 100,
+  px: `${Math.round(defect.w * 256)} × ${Math.round(defect.h * 256)} px @ ${Math.round((defect.cx - defect.w / 2) * 256)},${Math.round((defect.cy - defect.h / 2) * 256)}`,
+};
+
+const LAYERS = [
+  {
+    idx: '00',
+    op: 'camera_background',
+    meta: 'plate captured on the cell',
+    note: 'Every synthetic frame lands on this, so the detector never learns the backdrop as part of the part.',
+  },
+  {
+    idx: '01',
+    op: 'fingerprint.pkl',
+    meta: 'raw generator output · 128²',
+    note: 'Residue on its own — no carrier, no position, nothing to annotate yet.',
+  },
+  {
+    idx: '02',
+    op: 'compositor · 11 ops',
+    meta: 'pressure noise · gradient · motion blur · alpha dropout · feather · blend',
+    note: `Here the print gets a rectangle: ${PASTE.px}.`,
+  },
+  {
+    idx: '03',
+    op: 'front.pkl + blend',
+    meta: 'carrier merged with the shaped print · 256²',
+    note: 'The only plate a training run ever sees as an image.',
+  },
+  {
+    idx: '04',
+    op: LANE_A_LABEL,
+    meta: '2 rows · class cx cy w h, normalized',
+    note: 'Clears the stack entirely — nothing of it is drawn on a picture. Both rows are read off the two plates below.',
+  },
+];
+
+/* Rail čte shora dolů 04 → 00, protože stack se rozkládá vzhůru. Reverz je
+   tady (v DOM), aby pořadí tabů a odečítače sedělo s tím, co je vidět —
+   `flex-direction: column-reverse` by je rozešlo. */
+const RAIL_ORDER = LAYERS.map((l, layer) => ({ ...l, layer })).reverse();
+
+const fmt = (v: number) => v.toFixed(6);
 ---
 
-<div class="compositing-deck" data-compositing-deck aria-label="Compositing layer deconstructor">
-  <p class="sr-only">Five compositing layers from camera background to final YOLO-labeled output. Drag or tap layers to inspect.</p>
-  <ol class="compositing-deck__list sr-only">
-    <li>layer_0 camera_background chroma green</li>
-    <li>layer_1 front.pkl object</li>
-    <li>layer_2 fingerprint.pkl defect</li>
-    <li>layer_3 alpha_blend pressure_sim</li>
-    <li>layer_4 composite yolo_labels</li>
-  </ol>
-  <div class="compositing-deck__stage" data-deck-stage>
-    <button type="button" class="deck-layer deck-layer--0" data-layer="0" aria-label="layer_0 · camera_background · chroma green"><span class="deck-layer__bg"></span><span class="deck-layer__tab mono">layer_0 · camera_background</span></button>
-    <button type="button" class="deck-layer deck-layer--1" data-layer="1" aria-label="layer_1 · front.pkl → object"><img src="/images/gan-front.webp" alt="" /><span class="deck-layer__tab mono">layer_1 · front.pkl</span></button>
-    <button type="button" class="deck-layer deck-layer--2" data-layer="2" aria-label="layer_2 · fingerprint.pkl → defect"><img src="/images/gan-composite.webp" alt="" style="mix-blend-mode:multiply; opacity:0.7" /><span class="deck-layer__tab mono">layer_2 · fingerprint.pkl</span></button>
-    <button type="button" class="deck-layer deck-layer--3" data-layer="3" aria-label="layer_3 · alpha_blend + pressure_sim"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><radialGradient id="pressure"><stop offset="0%" stop-color="rgba(123,110,246,0.3)"/><stop offset="100%" stop-color="transparent"/></radialGradient></defs><rect width="100" height="100" fill="url(#pressure)" style="mix-blend-mode:overlay"/></svg><span class="deck-layer__tab mono">layer_3 · alpha_blend</span></button>
-    <button type="button" class="deck-layer deck-layer--4" data-layer="4" aria-label="layer_4 · composite + yolo_labels">
-      <img src="/images/gan-composite.webp" alt="" />
-      {/* Boxy jsou naměřené na assetu gan-composite (crop 340² z GAN_output.png):
-          díl jas > 60 → 20.5 / 6 / 59 / 88 %, fingerprint (r − b > 55) →
-          24.5 / 6 / 14.5 / 20.5 %. Bez toho visely nad prázdným kádrem. */}
-      <svg class="deck-yolo" viewBox="0 0 100 100" aria-hidden="true"><rect x="20.5" y="6" width="59" height="88" fill="none" stroke="var(--ok)" stroke-width="0.5"/><text x="20.5" y="4.6" font-size="3" fill="var(--ok)" font-family="monospace" stroke="rgba(8,8,12,0.85)" stroke-width="0.7" paint-order="stroke">Cls_Obj_Front_Side 93.15%</text><rect x="24.5" y="6" width="14.5" height="20.5" fill="none" stroke="var(--nok)" stroke-width="0.5"/><text x="24.5" y="29.5" font-size="2.5" fill="var(--nok)" font-family="monospace" stroke="rgba(8,8,12,0.85)" stroke-width="0.7" paint-order="stroke">Cls_Defect_Fingerprint 92.93%</text></svg>
-      <span class="deck-layer__tab mono">layer_4 · composite + yolo</span>
-    </button>
+<div class="deck" data-compositing-deck>
+  <p class="sr-only">
+    One compositor run, seed 0050, taken apart into five layers: camera background, raw
+    fingerprint.pkl output, the shaped print placed at its paste rectangle, the finished
+    composite, and — clear of the stack above them — the YOLO label file derived from the two
+    plates below it. Drag or focus a layer to pull it out of the stack; dragging the composite
+    or the placed print moves the matching bounding box and rewrites its coordinates.
+  </p>
+
+  <div class="deck__grid">
+    {/* ── stack ─────────────────────────────────────────────────────────── */}
+    <div class="deck__stageWrap">
+      {/* Kádr má statickou výšku (frame + rozpětí rozkladu) a rozklad je kolem
+          jeho středu souměrný. Složený stack tedy sedí uprostřed vyhrazené
+          plochy a rozložený ji přesně vyplní — v žádné fázi scrubu se výška
+          prvku nemění, takže si ScrollTrigger neposouvá vlastní start/end. */}
+      <div class="deck__stage" data-deck-stage>
+        <div class="deck__plates" data-deck-plates>
+          {/* 00 — reálná zelená plotna z komory */}
+          <button type="button" class="plate plate--bg" data-plate="0" aria-label="Layer 00 — camera_background">
+            <span class="plate__risers" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <picture>
+              <source type="image/avif" srcset="/images/lane-a-bg.avif" />
+              <source type="image/webp" srcset="/images/lane-a-bg.webp" />
+              <img src="/images/lane-a-bg.png" alt="" width="512" height="512" loading="lazy" decoding="async" />
+            </picture>
+          </button>
+
+          {/* 01 — surový otisk. Vykreslený na 50 % kádru, protože nativně JE
+                 128² proti 256² rámu; nikam v rámu ale zatím nepatří, proto
+                 leží na středu a nemá žádný rámeček. */}
+          <button type="button" class="plate plate--print" data-plate="1" aria-label="Layer 01 — raw fingerprint.pkl output">
+            <span class="plate__risers" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <span class="plate__patch plate__patch--free">
+              <picture>
+                <source type="image/avif" srcset="/images/lane-a-print.avif" />
+                <source type="image/webp" srcset="/images/lane-a-print.webp" />
+                <img src="/images/lane-a-print.png" alt="" width="123" height="128" loading="lazy" decoding="async" />
+              </picture>
+            </span>
+            <span class="plate__tick mono">128 × 128 · unplaced</span>
+          </button>
+
+          {/* 02 — tvarovaný otisk V PASTE RECTU. Rámeček i rozměr jsou tytéž
+                 hodnoty, které o vrstvu výš vyjdou jako řádek třídy 2.
+                 Paste rect leží ve spodních 30 % kádru, tedy v pásu, který
+                 zůstává nezakrytý i ve složenějších fázích rozkladu. */}
+          <button type="button" class="plate plate--paste" data-plate="2" aria-label={`Layer 02 — shaped print pasted at ${PASTE.px}`}>
+            <span class="plate__risers" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <span
+              class="plate__patch plate__patch--pasted"
+              data-paste-rect
+              style={`left:${PASTE.left}%;top:${PASTE.top}%;width:${PASTE.width}%;height:${PASTE.height}%`}
+            >
+              <picture>
+                <source type="image/avif" srcset="/images/lane-a-alpha.avif" />
+                <source type="image/webp" srcset="/images/lane-a-alpha.webp" />
+                <img src="/images/lane-a-alpha.png" alt="" width="232" height="214" loading="lazy" decoding="async" />
+              </picture>
+              <span class="plate__rectTick mono">{PASTE.px}</span>
+            </span>
+          </button>
+
+          {/* 03 — hotový kompozit. Alfa se nesmí slít na pozadí, pod ním leží
+                 vrstva 00 a musí prosvítat rohy i díry. */}
+          <button type="button" class="plate plate--composite" data-plate="3" aria-label="Layer 03 — front.pkl carrier blended with the print">
+            <span class="plate__risers" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <picture>
+              <source type="image/avif" srcset="/images/lane-a-composite.avif" />
+              <source type="image/webp" srcset="/images/lane-a-composite.webp" />
+              <img src="/images/lane-a-composite.png" alt="" width="512" height="512" loading="lazy" decoding="async" />
+            </picture>
+          </button>
+
+          {/* 04 — label. Jediná vrstva bez obrazu a jediná, která se s ničím
+                 nepřekrývá: odjíždí o 1.18 × výšku kádru, takže mezi ní
+                 a kompozitem zůstane čistý vzduch. To je celé tvrzení příčky
+                 přeložené do geometrie — dva obdélníky visící v prázdnu,
+                 nikoli obtažení nakreslené přes snímek. */}
+          <button type="button" class="plate plate--label" data-plate="4" aria-label={`Layer 04 — ${LANE_A_LABEL}, two derived boxes`}>
+            <span class="plate__risers" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <svg class="plate__boxes" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              {LABEL_ROWS.map((r) => (
+                <g class={`box box--${r.tone}`} data-box={r.from}>
+                  <rect
+                    x={(r.cx - r.w / 2) * 100}
+                    y={(r.cy - r.h / 2) * 100}
+                    width={r.w * 100}
+                    height={r.h * 100}
+                    vector-effect="non-scaling-stroke"
+                  />
+                </g>
+              ))}
+            </svg>
+            {LABEL_ROWS.map((r) => (
+              <span
+                class={`plate__flag mono plate__flag--${r.tone}`}
+                data-flag={r.from}
+                style={`left:${(r.cx - r.w / 2) * 100}%;top:${(r.cy - r.h / 2) * 100}%`}
+              >
+                {r.name}
+              </span>
+            ))}
+            <span class="plate__void mono" aria-hidden="true">no image · derived</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {/* ── rail: živý soubor + op sheet ──────────────────────────────────── */}
+    {/* Rail je JEDEN sticky blok, ne dva prvky, z nichž se jeden lepí uvnitř
+        druhého. Předchozí verze měla sticky jen panel se souborem a ten při
+        scrollu ujížděl přes op sheet pod sebou — a protože krycí pozadí měl
+        jen `pre`, hlavička i glosa se skládaly přes cizí text. Sticky na
+        celém railu drží vzájemné pozice pevné, takže se překrýt nemá co.
+
+        Pořadí je OBRÁCENÉ proti pořadí operací: rail je legenda ke stacku,
+        ne časová osa. Stack se rozkládá vzhůru (00 dole, 04 nahoře), takže
+        rail musí číst 04 → 00, jinak oko páruje řádek s jinou vrstvou, než
+        na kterou ukazuje. Reverz je v DOM, ne v CSS — pořadí tabů a pořadí
+        pro odečítač se musí shodovat s tím, co je vidět. */}
+    <div class="deck__rail">
+      {/* Čísla jsou živá: tah za vrstvu 02 nebo 03 přepisuje řádek, který
+          z ní pochází. Stavový řádek je v hlavičce panelu, aby byla nápověda
+          k interakci vidět ve chvíli, kdy se interaguje.
+          Panel stojí v čele railu, protože soubor JE vrstva 04 — a ta je
+          v obráceném pořadí hned pod ním. */}
+      <figure class="txt" data-deck-txt>
+        <figcaption class="txt__head">
+          <span class="txt__name mono">{LANE_A_LABEL}</span>
+          <span class="deck__status mono" data-deck-status aria-live="polite"></span>
+        </figcaption>
+        <pre class="txt__body mono"><code>{LABEL_ROWS.map((r) => (
+          <span class={`txt__row txt__row--${r.tone}`} data-row={r.from}>{r.cls} <span data-num="cx">{fmt(r.cx)}</span> <span data-num="cy">{fmt(r.cy)}</span> <span data-num="w">{fmt(r.w)}</span> <span data-num="h">{fmt(r.h)}</span></span>
+        ))}</code></pre>
+        <p class="txt__gloss">
+          Class 0 is the alpha silhouette of the composited part. Class 2 is the rectangle the
+          print was pasted into. Neither was measured off the picture — pull a plate sideways
+          and watch its row rewrite itself.
+        </p>
+      </figure>
+
+      {/* RAIL_ORDER, ne LAYERS — viz komentář nad railem. `data-op` nese
+          skutečný index vrstvy, protože pozice v seznamu už mu neodpovídá. */}
+      <p class="ops__legend mono">layers, top of stack down</p>
+      <ol class="ops" data-deck-ops>
+        {RAIL_ORDER.map(({ layer, ...l }) => (
+          <li class={`op${layer === LAYERS.length - 1 ? ' is-noted' : ''}`} data-op={layer}>
+            <button type="button" class="op__btn">
+              <span class="op__idx mono">{l.idx}</span>
+              <span class="op__body">
+                <span class="op__name mono">{l.op}</span>
+                <span class="op__meta mono">{l.meta}</span>
+                <span class="op__note"><span>{l.note}</span></span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
   </div>
-  <div aria-live="polite" class="deck-status mono" data-deck-status></div>
 </div>
 
 <script>
@@ -34,32 +304,452 @@
 </script>
 
 <style>
-  .compositing-deck { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-7) 0; }
-  /* -36px = rezerva na odsazení stacku (layer_4 je translate(32px)), jinak
-     nejvyšší vrstva přetéká viewport a stránka scrolluje do strany. */
-  /* Kádr je kvadratický, protože všechny reálné GAN výstupy jsou 1:1. Při 4/3
-     cover crop odřezával dílu horní a spodní hranu — a s ní i horní kótu
-     bounding boxu, tedy to jediné, co má vrstva layer_4 dokazovat. */
-  .compositing-deck__stage { position: relative; width: min(calc(90vw - 36px), 460px); aspect-ratio: 1; }
-  .deck-layer {
-    position: absolute; inset: 0;
+  /* Co drží JS a z čeho se počítá všechno ostatní:
+       --open   0 → 1, scrub rozkladu
+       --frame  hrana jedné vrstvy v px (menší než sloupec — viz hlavička)
+       --span   svislé rozpětí rozloženého stacku v px
+     Fallbacky odpovídají desktopu; bez JS zůstane stack složený uprostřed
+     vyhrazené plochy, což je pořád pravdivý obrázek: hotový kompozit na
+     zelené plotně.
+
+     Projekce je šikmá (oblique), ne perspektivní: vrstvy se rozjíždějí po
+     JEDNÉ ose a zachovávají si vodorovný registr, takže bounding box na label
+     vrstvě leží přesně nad rysem, ze kterého vznikl. */
+  .deck {
+    --open: 0;
+    --frame: 240px;
+    --span: 590px;
+    /* Popiska třídy 0 sedí nad horní hranou label vrstvy (translateY(-118%)),
+       a ta v plném rozkladu stojí na samém vrcholu — bez téhle rezervy by
+       vylezla ven ze stage. */
+    --flagpad: 14px;
+    --oblique: 1;
+    margin-top: var(--space-6);
+  }
+
+  .deck__grid {
+    display: grid;
+    gap: var(--space-7);
+  }
+  @media (min-width: 1000px) {
+    .deck__grid {
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
+      gap: var(--space-8);
+    }
+  }
+
+  /* ── stack ────────────────────────────────────────────────────────────── */
+  .deck__stageWrap {
+    min-width: 0;
+  }
+  /* Statická výška. Rozklad je souměrný kolem středu, takže složený stack
+     stojí uprostřed a rozložený plochu vyplní — nikdy se nemění layout. */
+  .deck__stage {
+    position: relative;
+    width: 100%;
+    height: calc(var(--frame) + var(--span) + var(--flagpad));
+  }
+  /* Kádr vrstvy: čtverec --frame, vodorovně na střed, svisle posazený tak,
+     aby se rozklad souměrně kolem něj přesně vešel do vyhrazené plochy. */
+  .deck__plates {
+    position: absolute;
+    top: calc(var(--span) / 2 + var(--flagpad));
+    left: 50%;
+    width: var(--frame);
+    height: var(--frame);
+    margin-left: calc(var(--frame) / -2);
+  }
+
+  .plate {
+    position: absolute;
+    inset: 0;
+    display: block;
+    padding: 0;
     border: 1px solid var(--border);
-    background: var(--bg-surface);
+    background: transparent;
     cursor: grab;
     touch-action: none;
-    padding: 0;
-    overflow: hidden;
-    transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* Žádný přechod na transform: scrub i tah zapisují transform každý frame
+       a interpolace by je táhla za kurzorem. Vysunutí zvýrazněné vrstvy
+       tweenuje JS na vlastní hodnotě, takže je plynulé bez toho zpoždění. */
+    transition:
+      opacity var(--dur-fast) var(--ease-out),
+      border-color var(--dur-fast) var(--ease-out),
+      box-shadow var(--dur-fast) var(--ease-out);
+    /* Bez will-change se při scrubu překresluje celý stack jako jedna vrstva
+       a na slabších GPU to trhá. */
+    will-change: transform;
   }
-  .deck-layer img, .deck-layer svg { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .deck-layer__bg { display: block; width: 100%; height: 100%; background: linear-gradient(145deg, #1a3a1f, #245c2c); }
-  .deck-layer__tab { position: absolute; right: 0; top: 0; font-size: 9px; color: var(--text-muted); background: var(--bg-elevated); padding: 2px 6px; opacity: 0; transition: opacity 0.2s; }
-  .deck-layer:hover .deck-layer__tab, .deck-layer.is-dragging .deck-layer__tab { opacity: 1; }
-  .deck-layer--0 { z-index: 1; transform: translate(0,0) scale(1); }
-  .deck-layer--1 { z-index: 2; transform: translate(8px,8px) scale(0.99); }
-  .deck-layer--2 { z-index: 3; transform: translate(16px,16px) scale(0.98); }
-  .deck-layer--3 { z-index: 4; transform: translate(24px,24px) scale(0.97); }
-  .deck-layer--4 { z-index: 5; transform: translate(32px,32px) scale(0.96); }
-  .deck-yolo { position: absolute; inset: 0; pointer-events: none; }
-  .deck-status { font-size: 11px; color: var(--text-muted); margin-top: var(--space-4); min-height: 1.5em; }
+  /* Spojnice rohů k vrstvě pod ní — to, co z pěti karet dělá čitelný řez.
+     V lokálním prostoru jsou svislé, sklon je nakloní společně s vrstvami,
+     takže oko po nich mapuje rys na rys. Délku (--gap) dává JS po vrstvách:
+     vrstva 00 nemá pod sebou nic (0), vrstva 04 má pod sebou vzduch navíc. */
+  .plate__risers {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: calc(var(--open) * var(--open));
+  }
+  .plate__risers i {
+    position: absolute;
+    width: 1px;
+    /* 1.0223 = 1 / cos 12° — spojnice jde šikmo, tedy je delší než rozestup. */
+    height: calc(var(--open) * var(--gap, 0px) * 1.0223);
+    transform-origin: top center;
+    transform: rotate(calc(var(--open) * var(--oblique) * 12deg));
+    background: linear-gradient(to bottom, var(--border-hover), transparent);
+  }
+  .plate__risers i:nth-child(1) {
+    left: 0;
+    top: 0;
+  }
+  .plate__risers i:nth-child(2) {
+    right: 0;
+    top: 0;
+  }
+  .plate__risers i:nth-child(3) {
+    left: 0;
+    top: 100%;
+  }
+  .plate__risers i:nth-child(4) {
+    right: 0;
+    top: 100%;
+  }
+  .plate:active {
+    cursor: grabbing;
+  }
+  .plate:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: 3px;
+  }
+  .plate img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .plate picture {
+    display: block;
+    height: 100%;
+  }
+
+  /* Mezivrstvy existují jen v rozloženém stavu. Ve složeném by surový otisk
+     prosvítal skrz obě zahloubení kompozitu (naměřeno 872 průhledných px
+     uvnitř středového pásma) — stack by tedy začínal viditelnou vadou místo
+     tím jediným, co je na začátku pravda: hotovým snímkem na zelené plotně. */
+  /* Plotna je jediný plně sytý prvek v sekci a syrová by v tmavém rozhraní
+     přetáhla pozornost z dílu, tedy z toho, o čem stack je. Ztlumení je
+     expoziční, ne barevné — táž korekce, jakou dostávají reálné snímky
+     v build-assets (gain u compare-real) — a s rozkladem ještě povolí, aby
+     spodní vrstva nekonkurovala tomu, co se nad ní děje. */
+  .plate--bg img {
+    filter: brightness(calc(0.7 - var(--open) * 0.14)) saturate(calc(1 - var(--open) * 0.3));
+  }
+  .plate--print,
+  .plate--paste {
+    opacity: clamp(0, calc(var(--open) * 3), 1);
+    /* Průsvitné fólie, ne tmavé desky: v pipeline to průsvitné overlaye
+       skutečně JSOU a přes ně má prosvítat plotna pod nimi. */
+    background: color-mix(in srgb, var(--bg-deep) 34%, transparent);
+  }
+  /* Label je jediná vrstva, která není obraz — dostane proto čárkovanou
+     hranu v accentu místo plné. */
+  .plate--label {
+    background: transparent;
+    border: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+    opacity: clamp(0, calc(var(--open) * 2.6), 1);
+  }
+
+  .plate__patch {
+    position: absolute;
+    display: block;
+  }
+  .plate__patch--free {
+    left: 25%;
+    top: 25%;
+    width: 50%;
+    height: 50%;
+  }
+  .plate__patch--free img {
+    object-fit: contain;
+  }
+  .plate__patch--pasted {
+    outline: 1px dashed var(--accent);
+    outline-offset: 2px;
+  }
+  .plate__patch--pasted img {
+    object-fit: fill;
+  }
+
+  .plate__tick,
+  .plate__rectTick,
+  .plate__void {
+    position: absolute;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .plate__tick {
+    left: 25%;
+    bottom: 21%;
+  }
+  /* Kóta se zarovnává na PRAVOU hranu paste rectu — ten leží v pravé části
+     kádru a od levé hrany by text na úzkém viewportu vyjel ze stage. */
+  .plate__rectTick {
+    right: 0;
+    bottom: calc(100% + 6px);
+    color: var(--accent-light);
+  }
+  /* Popiska prázdné vrstvy sedí u spodní hrany label plate — ta jediná nemá
+     obraz, takže tam je na ni místo a zároveň je to jediné, co ve vzduchu
+     pod stackem vysvětluje, proč je vrstva prázdná. */
+  .plate__void {
+    left: 0;
+    top: calc(100% + 8px);
+    opacity: calc(var(--open) * var(--open));
+    color: color-mix(in srgb, var(--accent) 60%, var(--text-muted));
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .plate__boxes {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  .box rect {
+    fill: none;
+    stroke-width: 1;
+  }
+  .box--ok rect {
+    stroke: var(--ok);
+  }
+  .box--nok rect {
+    stroke: var(--nok);
+  }
+  .plate__flag {
+    position: absolute;
+    font-size: 8px;
+    letter-spacing: 0.04em;
+    transform: translateY(-118%);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .plate__flag--ok {
+    color: var(--ok);
+  }
+  .plate__flag--nok {
+    color: var(--nok);
+    transform: translateY(-118%) translateX(-2px);
+  }
+
+  /* Zvýraznění vrstvy: ostatní ustoupí, aktivní dostane accent hranu a jde
+     dopředu. Řídí to JS třídou na .deck, aby to fungovalo z obou směrů
+     (plate i op). */
+  .deck.is-isolating .plate {
+    opacity: 0.12;
+  }
+  .deck.is-isolating .plate.is-active {
+    opacity: 1;
+  }
+  .plate.is-active {
+    z-index: 6;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent-glow), 0 24px 60px -20px rgba(0, 0, 0, 0.9);
+  }
+
+  /* ── rail ─────────────────────────────────────────────────────────────── */
+  .deck__rail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    min-width: 0;
+  }
+  @media (min-width: 1000px) {
+    /* Celý rail jako jeden sticky blok. `align-self: start` je podmínka —
+       roztažená mřížková položka je už tak vysoká jako řádek a nemá se kam
+       posunout, takže by sticky nic nedělalo. Uvnitř se nic nelepí zvlášť,
+       takže se ani nemá co přes co posouvat. */
+    .deck__rail {
+      align-self: start;
+      position: sticky;
+      top: clamp(24px, 7vh, 76px);
+    }
+  }
+
+  /* ── label soubor ───────────────────────────────────────────────────── */
+  .txt {
+    margin: 0;
+    min-width: 0;
+  }
+  .txt__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+  .txt__name {
+    font-size: var(--fs-mono-sm);
+    color: var(--text-muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .deck__status {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    text-align: right;
+    min-height: 1.4em;
+  }
+  .txt__body {
+    margin: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--accent);
+    /* Krycí pozadí: panel je sticky a smí se dostat přes text pod railem. */
+    background: var(--bg-elevated);
+    font-size: var(--fs-mono-sm);
+    color: var(--text-secondary);
+    overflow-x: auto;
+    font-variant-numeric: tabular-nums;
+  }
+  .txt__row {
+    display: block;
+    transition: color var(--dur-fast) var(--ease-out);
+  }
+  .txt__row.is-live {
+    color: var(--text-primary);
+  }
+  .txt__row--ok.is-live {
+    color: var(--ok);
+  }
+  .txt__row--nok.is-live {
+    color: var(--nok);
+  }
+  .txt__gloss {
+    margin: var(--space-4) 0 0;
+    max-width: 56ch;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: var(--text-muted);
+  }
+
+  /* ── op sheet ───────────────────────────────────────────────────────── */
+  .ops {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  /* Sestupné číslování (04 → 00) je záměr, ne chyba. Bez popisky by to tak
+     ale nikdo nečetl, takže rail říká rovnou, čím je řazený. */
+  .ops__legend {
+    /* Sedí těsně na seznamu, ne uprostřed mezery railu — proto záporné
+       odsazení proti gapu flexu. */
+    margin: 0 0 calc(var(--space-6) * -1 + var(--space-3));
+    padding: 0 var(--space-3);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .op + .op {
+    border-top: 1px solid var(--border);
+  }
+  .op__btn {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-4);
+    width: 100%;
+    padding: var(--space-3) var(--space-3);
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out);
+  }
+  .op.is-active .op__btn {
+    background: var(--glass);
+  }
+  .op__idx {
+    font-size: var(--fs-mono-sm);
+    color: var(--text-muted);
+    transition: color var(--dur-fast) var(--ease-out);
+  }
+  .op.is-active .op__idx {
+    color: var(--accent);
+  }
+  .op__body {
+    display: block;
+    min-width: 0;
+  }
+  .op__name {
+    display: block;
+    font-size: var(--fs-mono-md);
+    color: var(--text-primary);
+  }
+  .op__meta {
+    display: block;
+    margin-top: var(--space-1);
+    font-size: 10px;
+    line-height: 1.6;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+  }
+  .op__note {
+    display: block;
+    margin-top: var(--space-2);
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+  /* Na desktopu je rail sticky, takže se musí vejít do viewportu — pět
+     odstavců naráz se nevejde a stejně spolu soutěží o pozornost. Ukazuje
+     se proto komentář jen k té vrstvě, která je zvýrazněná (v klidu 04).
+     Rozbaluje se přes grid-template-rows 0fr → 1fr, protože na `height:auto`
+     se přechod nechytí a skok výšky by railem trhnul. */
+  @media (min-width: 1000px) {
+    .op__note {
+      display: grid;
+      grid-template-rows: 0fr;
+      margin-top: 0;
+      opacity: 0;
+      transition:
+        grid-template-rows var(--dur-base) var(--ease-out),
+        margin-top var(--dur-base) var(--ease-out),
+        opacity var(--dur-fast) var(--ease-out);
+    }
+    .op__note > span {
+      overflow: hidden;
+    }
+    .op.is-noted .op__note {
+      grid-template-rows: 1fr;
+      margin-top: var(--space-2);
+      opacity: 1;
+    }
+  }
+
+  /* Rozložení je v reduced-motion statické — stack se otevře rovnou, bez
+     scrubu a bez náklonu; --open na 1 nastaví JS, aby se to nerozešlo
+     s transformacemi vrstev, které bez JS neexistují. */
+  @media (prefers-reduced-motion: reduce) {
+    .deck {
+      --oblique: 0;
+    }
+    .op__note {
+      transition: none;
+    }
+  }
+  /* Pod 700 px se sklon vypíná — vodorovná výchylka šikmé projekce
+     (0.21 × rozpětí) by na úzkém viewportu vyrobila scroll do strany. */
+  @media (max-width: 700px) {
+    .deck {
+      --oblique: 0;
+    }
+  }
 </style>

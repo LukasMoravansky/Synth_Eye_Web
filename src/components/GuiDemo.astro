@@ -5,7 +5,7 @@
 <section id="gui-demo" class="gui-demo section" aria-labelledby="gui-demo-heading" data-gui-demo>
   <div class="container">
     <h2 id="gui-demo-heading" data-reveal>See what the operator sees</h2>
-    <p class="gui-demo__lead" data-reveal>This is a simulation of the real Synth.Eye inspection interface. Click CAPTURE and ANALYZE to inspect a part.</p>
+    <p class="gui-demo__lead" data-reveal>This is a simulation of the real Synth.Eye inspection interface. Connect the camera, then capture, analyze and measure a part.</p>
 
     <div class="gui-app" data-reveal>
       <div class="gui-card gui-card--camera">
@@ -14,16 +14,27 @@
           {/* Bez `data-inspectable` — kamera kreslí vlastní detekční boxy (gui-demo.js).
               Inspection cursor by přes ně vykreslil druhou sadu boxů a druhý chip
               pro tentýž objekt, v jiné barvě i jiném tvaru. Jedna scéna = jeden mluvčí. */}
-          <img data-gui-img src="/images/part-front.webp" alt="Idle camera view" width="800" height="600" />
+          <div class="gui-welcome" data-gui-welcome>
+            <span class="gui-welcome__dot" aria-hidden="true"></span>
+            <p class="gui-welcome__status mono">CAMERA DISCONNECTED</p>
+            <p class="gui-welcome__device mono">Basler acA1920-40uc · 1920×1200</p>
+            <p class="gui-welcome__hint">Press CONNECT to initialize the camera stream.</p>
+          </div>
+          <p class="gui-streamready mono" data-gui-streamready hidden>STREAM READY · press CAPTURE</p>
+          {/* Žádný `src` při prvním renderu — nastaví se až v setImage() při CAPTURE.
+              Prázdný `src=""` by v některých prohlížečích vyvolal request na aktuální
+              stránku a chybu v konzoli. */}
+          <img data-gui-img hidden alt="" width="1920" height="1200" />
           <div class="gui-flash" data-gui-flash aria-hidden="true"></div>
           <div class="gui-scanline" data-gui-scanline aria-hidden="true"></div>
           <div class="gui-overlay" data-gui-overlay></div>
-          <div class="gui-measure" data-gui-measure hidden></div>
+          <svg class="gui-measure" data-gui-measure viewBox="0 0 1920 1200"
+               preserveAspectRatio="xMidYMid meet" aria-hidden="true" hidden></svg>
           <div class="gui-verdict" data-gui-verdict hidden>OK</div>
         </div>
         <div class="gui-toolbar" role="toolbar" aria-label="Inspection controls">
-          <button type="button" class="gui-btn" data-btn-disconnect>DISCONNECT</button>
-          <button type="button" class="gui-btn" data-btn-capture>CAPTURE</button>
+          <button type="button" class="gui-btn" data-btn-connect>CONNECT</button>
+          <button type="button" class="gui-btn" data-btn-capture disabled>CAPTURE</button>
           <button type="button" class="gui-btn" data-btn-analyze disabled>ANALYZE</button>
           <button type="button" class="gui-btn" data-btn-measure disabled>MEASURE</button>
           <button type="button" class="gui-btn" data-btn-clear>CLEAR</button>
@@ -43,18 +54,34 @@
 
       <div class="gui-card gui-card--info">
         <div class="gui-info-row mono"><span>Camera</span><span>Basler acA1920-40uc</span></div>
-        <div class="gui-info-row mono"><span>Resolution</span><span>1600×1200</span></div>
+        <div class="gui-info-row mono"><span>Resolution</span><span>1920×1200</span></div>
         <div class="gui-info-row mono"><span>Last Update</span><span data-last-update>—</span></div>
         <div class="gui-info-row mono"><span>System</span><span>Synth.Eye AI</span></div>
       </div>
 
       <div class="gui-card gui-card--graph">
-        <header class="gui-card__head"><h3>Productivity Graph</h3><span class="mono" data-graph-count>0</span></header>
-        <svg viewBox="0 0 300 80" class="gui-graph" aria-hidden="true">
-          <path data-graph-path d="M 0 80" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
-        </svg>
+        <header class="gui-card__head">
+          <h3>Productivity Graph</h3>
+          <div class="gui-legend mono">
+            <span class="is-ok"><b></b>OK</span>
+            <span class="is-nok"><b></b>NOK</span>
+          </div>
+        </header>
+        <svg class="gui-graph" data-graph viewBox="0 0 780 300" role="img"
+             aria-label="Cumulative OK and NOK detections" preserveAspectRatio="xMidYMid meet"></svg>
+        <p class="gui-graph__caption">The total number of images analyzed is <b data-cap-total>0</b>, of which <span class="is-ok" data-cap-ok>0</span> were found to be OK and <span class="is-nok" data-cap-nok>0</span> were found to be NOK.</p>
       </div>
     </div>
+
+    <aside class="gui-disclaimer" role="note">
+      <span class="gui-disclaimer__tag mono" aria-hidden="true">DEMO</span>
+      <p class="gui-disclaimer__text">
+        Browser simulation for presentation purposes only — not the real Synth.Eye inspection
+        application. No camera is connected, images and detections are pre-recorded and the
+        AI model does not run here. The actual PyQt5 application, the trained models and the
+        full pipeline live in the repository below.
+      </p>
+    </aside>
 
     <p class="gui-demo__repo mono">
       <a href="https://github.com/rparak/Synth_Eye" target="_blank" rel="noopener noreferrer">github.com/rparak/Synth_Eye<span class="sr-only"> (opens in new tab)</span></a>
@@ -87,28 +114,66 @@
   .gui-card--graph { grid-column: 2; grid-row: 2; }
   .gui-card__head { display: flex; justify-content: space-between; margin-bottom: var(--space-3); }
   .gui-card__head h3 { font-size: 1rem; font-weight: 600; margin: 0; }
-  .gui-viewport { position: relative; background: var(--bg-deep); aspect-ratio: 4/3; overflow: hidden; border-radius: var(--radius-sm); }
+  .gui-viewport { position: relative; background: var(--bg-deep); aspect-ratio: 16 / 10; overflow: hidden; border-radius: var(--radius-sm); }
   .gui-viewport img { width: 100%; height: 100%; object-fit: contain; }
-  .gui-defect-overlay {
-    position: absolute; inset: 20% 25%;
-    background: radial-gradient(ellipse at 50% 55%, rgba(239,68,68,0.35), transparent 65%);
-    mix-blend-mode: multiply;
-    pointer-events: none;
+  .gui-welcome {
+    position: absolute; inset: 0; z-index: 2;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: var(--space-2); text-align: center; padding: var(--space-4);
+    background: var(--bg-deep); border: 1px solid var(--border);
   }
+  .gui-welcome__dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted);
+    margin-bottom: var(--space-2);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .gui-welcome__dot { animation: gui-welcome-pulse 2.4s ease-in-out infinite; }
+  }
+  @keyframes gui-welcome-pulse {
+    0%, 100% { opacity: 0.5; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+    50% { opacity: 1; box-shadow: 0 0 6px 2px rgba(255, 255, 255, 0.08); }
+  }
+  .gui-welcome__status { color: var(--text-primary); font-size: 11px; letter-spacing: 0.08em; }
+  .gui-welcome__device { color: var(--text-secondary); font-size: 11px; }
+  .gui-welcome__hint { color: var(--text-secondary); font-size: 0.875rem; max-width: 26ch; }
+  .gui-streamready {
+    position: absolute; inset: 0; z-index: 1;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted); font-size: 11px; letter-spacing: 0.06em;
+  }
+  .gui-streamready[hidden] { display: none; }
   .gui-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
   .gui-flash.is-active { opacity: 0.7; transition: opacity 90ms ease-out; }
   .gui-scanline { position: absolute; left: 0; right: 0; height: 2px; background: var(--accent); box-shadow: 0 0 8px var(--accent); top: 0; pointer-events: none; }
   .gui-overlay { position: absolute; inset: 0; pointer-events: none; }
+  /* :global() je tu POVINNÉ, ne kosmetika. Boxy, chipy, SVG anotaci i řádky
+     loggeru staví gui-demo.js přes document.createElement — ty nikdy nedostanou
+     `data-astro-cid-*`, kterým Astro scopuje styly, takže bez :global() zůstanou
+     úplně bez CSS: box bez `position: absolute` zmizí a chip spadne do
+     normálního toku jako holý text v rohu viewportu.
+     Scope drží rodič z šablony (.gui-overlay / .gui-measure / .gui-logger),
+     globální je jen potomek — pravidla tedy nadále neunikají mimo sekci. */
+
   /* Chip detekce — stejný typografický základ jako u inspection cursoru
      (10px mono, tracking 0.04em, tmavé plátno, barevná levá hrana). Liší se
      jen barvou a umístěním: verdikt stroje je uvnitř boxu, sonda uživatele
      popisuje zvenčí. */
-  .gui-box { position: absolute; border: 1px solid var(--ok); color: var(--ok); }
-  .gui-box--defect { border-color: var(--nok); color: var(--nok); }
-  .gui-box span {
+  /* 2px linka + tmavý lem z obou stran: záběry z komory mají zelené pozadí
+     (naměřeno rgb(12,101,77)) a --ok #22c55e je proti němu kontrast 3:1 ve
+     stejném odstínu — hairline se na něm ztratí. Lem drží box čitelný i na
+     světlém kovu dílu, kde by naopak zanikla tmavá varianta. */
+  .gui-overlay :global(.gui-box) {
+    position: absolute;
+    border: 2px solid var(--ok);
+    color: var(--ok);
+    box-shadow: 0 0 0 1px rgba(8, 8, 12, 0.7), inset 0 0 0 1px rgba(8, 8, 12, 0.7);
+  }
+  .gui-overlay :global(.gui-box--defect) { border-color: var(--nok); color: var(--nok); }
+  .gui-overlay :global(.gui-box span) {
     position: absolute;
     top: 1px;
     left: 1px;
+    font-family: var(--font-mono);
     font-size: 10px;
     letter-spacing: 0.04em;
     line-height: 1.4;
@@ -117,15 +182,30 @@
     border-left: 1px solid currentColor;
     white-space: nowrap;
   }
+  .gui-overlay :global(.gui-box span.gui-box__chip--right) { left: auto; right: 1px; border-left: none; border-right: 1px solid currentColor; }
   .gui-verdict { position: absolute; bottom: var(--space-3); right: var(--space-3); font-family: var(--font-mono); font-weight: 700; padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); }
   .gui-verdict--ok { background: var(--ok-glow); color: var(--ok); }
   .gui-verdict--nok { background: var(--nok-glow); color: var(--nok); }
-  .gui-measure { position: absolute; inset: 0; pointer-events: none; }
-  .gui-dim { position: absolute; font-size: 10px; color: var(--accent); background: rgba(0,0,0,0.6); padding: 2px 4px; }
-  .gui-dim:nth-child(1) { top: 10%; left: 5%; }
-  .gui-dim:nth-child(2) { top: 10%; right: 5%; }
-  .gui-dim:nth-child(3) { bottom: 30%; left: 20%; }
-  .gui-dim:nth-child(4) { bottom: 20%; right: 15%; }
+  .gui-measure { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .gui-measure[hidden] { display: none; }
+  /* Vzhled anotace MUSÍ být v CSS, ne v prezentačních atributech: `var()` se
+     v SVG prezentačním atributu (stroke="var(--accent)") v Chrome neresolvuje,
+     stroke spadne na `none` a vrstva se vykreslí prázdná. V CSS var() platí. */
+  .gui-measure :global(polygon),
+  .gui-measure :global(circle),
+  .gui-measure :global(line) {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+  }
+  .gui-measure :global(.gui-measure__dot) { fill: var(--accent); stroke: none; }
+  /* Tmavý lem — stejný důvod jako u detekčních boxů: zelené pozadí komory
+     a světlý kov dílu, hairline by se na jednom z nich ztratil. */
+  .gui-measure { filter: drop-shadow(0 0 1px rgba(8, 8, 12, 0.9)); }
+  .gui-measure :global(circle),
+  .gui-measure :global(line) { transform-box: fill-box; transform-origin: center; }
+  .gui-measure :global(line) { transform-origin: 0 50%; }
   .gui-toolbar { display: flex; gap: var(--space-2); margin-top: var(--space-4); overflow-x: auto; }
   .gui-btn {
     flex: 1; min-width: 80px; height: 44px;
@@ -136,13 +216,79 @@
   .gui-btn:hover:not(:disabled) { border-color: var(--border-hover); color: var(--accent-light); }
   .gui-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .gui-logger { flex: 1; overflow-y: auto; font-size: 11px; color: var(--text-secondary); max-height: 200px; }
-  .log-ts { color: var(--text-muted); }
+  /* Řádky loggeru taky staví JS — viz poznámka o :global() u .gui-overlay. */
+  .gui-logger :global(.log-ts) { color: var(--text-muted); }
+  .gui-logger :global(.log-line--nok) { color: var(--nok); }
+  .gui-logger :global(.log-line--ok) { color: var(--ok); }
   .gui-stats { display: flex; gap: var(--space-4); margin-top: var(--space-3); font-size: 11px; color: var(--text-muted); }
   .gui-info-row { display: flex; justify-content: space-between; font-size: 11px; }
   .gui-info-row span:first-child { color: var(--text-muted); }
-  .gui-graph { width: 100%; height: 80px; }
+  .gui-legend { display: flex; align-items: center; gap: var(--space-3); font-size: 11px; color: var(--text-secondary); flex-wrap: wrap; }
+  .gui-legend span { display: flex; align-items: center; gap: 7px; }
+  .gui-legend b { width: 22px; height: 2px; border-radius: 2px; position: relative; display: inline-block; }
+  .gui-legend b::after {
+    content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 7px; height: 7px; border-radius: 50%; background: inherit;
+  }
+  .gui-legend .is-ok b { background: var(--ok); }
+  .gui-legend .is-nok b { background: var(--nok); }
+  .gui-graph { display: block; width: 100%; height: auto; }
+  /* Graf staví vlastní markup (mřížka, osy, popisky, křivky) v JS přes
+     document.createElementNS — stejný důvod pro :global() jako u .gui-overlay
+     a .gui-measure výše: elementy nikdy nedostanou `data-astro-cid-*`. */
+  .gui-graph :global(.gui-graph__grid) { stroke: var(--border); stroke-width: 1; }
+  .gui-graph :global(.gui-graph__axis) { stroke: var(--border-hover); stroke-width: 1; }
+  .gui-graph :global(.gui-graph__tick),
+  .gui-graph :global(.gui-graph__label) { font-family: var(--font-mono); }
+  .gui-graph :global(.gui-graph__tick) { fill: var(--text-muted); }
+  .gui-graph :global(.gui-graph__label) { fill: var(--text-secondary); }
+  .gui-graph :global(.gui-graph__nodata) { font-family: var(--font-mono); fill: var(--text-muted); }
+  .gui-graph :global(.gui-serie--ok) { stroke: var(--ok); fill: none; }
+  .gui-graph :global(.gui-serie--nok) { stroke: var(--nok); fill: none; }
+  .gui-graph :global(.gui-serie-dot--ok) { fill: var(--ok); }
+  .gui-graph :global(.gui-serie-dot--nok) { fill: var(--nok); }
+  .gui-graph :global(.gui-serie-end--ok),
+  .gui-graph :global(.gui-serie-end--nok) { font-family: var(--font-mono); font-weight: 700; }
+  .gui-graph :global(.gui-serie-end--ok) { fill: var(--ok); }
+  .gui-graph :global(.gui-serie-end--nok) { fill: var(--nok); }
+  .gui-graph__caption { font-size: 12px; color: var(--text-secondary); margin-top: var(--space-3); }
+  .gui-graph__caption b,
+  .gui-graph__caption span { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 700; }
+  .gui-graph__caption b { color: var(--text-primary); }
+  .gui-graph__caption .is-ok { color: var(--ok); }
+  .gui-graph__caption .is-nok { color: var(--nok); }
   .gui-tooltip { font-size: 11px; color: var(--accent); margin-top: var(--space-2); }
-  .gui-demo__repo { margin-top: var(--space-6); font-size: var(--fs-mono-sm); }
+  /* Disclaimer — čte se jako poznámka pod kartami, ne jako varovný banner:
+     bez pozadí karty, jen levá accent hrana, ať nekonkuruje samotnému GUI. */
+  .gui-disclaimer {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+    padding-left: var(--space-4);
+    border-left: 1px solid var(--accent);
+    max-width: 68ch;
+  }
+  .gui-disclaimer__tag {
+    flex: none;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--accent-light);
+    border: 1px solid var(--border-hover);
+    border-radius: var(--radius-sm);
+    padding: 2px 6px;
+    line-height: 1.4;
+  }
+  .gui-disclaimer__text {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-muted);
+  }
+  .gui-demo__repo { margin-top: var(--space-4); font-size: var(--fs-mono-sm); }
+  @media (max-width: 560px) {
+    .gui-disclaimer { flex-direction: column; gap: var(--space-2); }
+  }
   @media (max-width: 1024px) {
     .gui-app { grid-template-columns: 1fr 1fr; }
     .gui-card--camera { grid-column: 1 / -1; grid-row: auto; }

@@ -6,6 +6,8 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 const CONTEXT = path.join(ROOT, '.claude', 'context');
 // Rozložené prezentační SVG — texty, šipky a rámečky odstraněné, zůstal obraz.
 const DEC = path.join(CONTEXT, 'context_images', 'decomposed');
+// Mezikroky jednoho běhu compositoru (seed 0050) + jeho YOLO label.
+const LANE_A = path.join(CONTEXT, 'context_images', 'lane-a');
 const OUT = path.join(ROOT, 'public', 'images');
 const DATA_DIR = path.join(ROOT, 'src', 'data');
 
@@ -303,6 +305,45 @@ const ASSETS = [
   { src: path.join(CONTEXT, 'context_images', 'GAN_output.png'), slug: 'gan-front', max: 512, crop: { left: 123, top: 65, width: 340, height: 340 } },
   { src: path.join(CONTEXT, 'context_images', 'GAN_output.png'), slug: 'gan-composite', max: 512, crop: { left: 425, top: 65, width: 340, height: 340 } },
   { src: path.join(CONTEXT, 'context_images', 'GAN_output.png'), slug: 'gan-back', max: 512, crop: { left: 737, top: 68, width: 340, height: 340 } },
+  // ── Lane A rozebraná — jeden reálný běh compositoru (seed 0050) ──────────
+  // Čtyři mezikroky JEDNOHO kompozitu plus jeho YOLO label. Předtím deck
+  // stavěl vrstvy z `gan-front` / `gan-composite` (dva různé seedy) a alpha
+  // vrstvu maloval radiálním gradientem v SVG — tedy tvrdil rozklad, který se
+  // nikdy nestal. Zdroje: .claude/context/context_images/lane-a/.
+  //
+  // Registrace (naměřeno, ne odhad):
+  //   composite.png  256²  alfa bbox x 26→216 y 0→255  = 191×256
+  //     → normalizovaně cx 0.474609 cy 0.500000 w 0.746094 h 1.000000
+  //     což je PŘESNĚ řádek `0 0.474609 0.500000 0.746094 1.000000`
+  //     v composite.txt. Label třídy 0 je tedy alfa silueta dílu, dopočítaná,
+  //     ne detekovaná — a je to ověřitelné na pixel.
+  //   řádek třídy 2 (`2 0.710938 0.841797 0.273438 0.253906`) → v 256² rám
+  //     70×65 px na (147,183). Poměr k nativnímu tvaru otisku (116×107) je
+  //     0.603 / 0.607 v obou osách, tedy jednotné měřítko — box je paste rect
+  //     otisku, ne obtažený nález.
+  { src: path.join(LANE_A, 'background.png'), slug: 'lane-a-bg', max: 512, crop: { left: 360, top: 0, width: 1200, height: 1200 } },
+  // Surový výstup fingerprint.pkl. Má REÁLNÝ alfa kanál — krycí jsou papilární
+  // linie (luma 61), podklad je průhledný (luma 225). Na --bg-deep by tedy byl
+  // tmavý otisk v prázdnu, prakticky neviditelný. `negate` obrátí jen RGB,
+  // alfu nechává: táž informace, opačná polarita, čitelná na tmavém.
+  // Crop 123 z 128: sloupce 123–127 jsou plně krycí černý pruh při pravé hraně
+  // (naměřeno meanLuma 1–7 přes celou výšku) — padding generátoru, ne otisk.
+  // Po negaci by to byl bílý sloupec přes celou vrstvu, tedy vada, kterou by
+  // divák četl jako chybu rozhraní.
+  { src: path.join(LANE_A, 'fingerprint-raw.png'), slug: 'lane-a-print', max: 128, crop: { left: 0, top: 0, width: 123, height: 128 }, negate: true },
+  // Tvarovaný otisk po řetězci 11 operací, nativně 116×107, plně krycí
+  // s černým podkladem. alphaKey podklad odmaskuje — černá = nulový tlak,
+  // tedy místo, kde se nic neuloží; průhlednost to říká přesněji než plocha.
+  // gain 1.45: tvarovaný otisk má na tmavém podkladu naměřeno max luma 209, ale
+  // těžiště kolem 60 — na --bg-deep by se z něj v odsazené vrstvě stal šedý
+  // flek. Zesílení je jednotné na všech kanálech, tedy nemění poměr tlaku
+  // mezi místy otisku, jen posouvá celou stupnici do čitelného rozsahu.
+  { src: path.join(LANE_A, 'fingerprint-alpha.png'), slug: 'lane-a-alpha', max: 232, upscale: true, alphaKey: { threshold: 14, feather: 26 }, gain: [1.45, 1.45, 1.45] },
+  // Finální kompozit. Alfa se NESLÉVÁ na --bg-deep: pod ním leží ve stacku
+  // reálná zelená plotna (lane-a-bg) a musí prosvítat. Proto se skládá
+  // vlastním <picture>, ne přes <Picture> (ten by za průhledné pixely
+  // podložil lqip placeholder).
+  { src: path.join(LANE_A, 'composite.png'), slug: 'lane-a-composite', max: 512, upscale: true },
   // scheme_1.png (slug scheme-hw) tu byl pro sekci Blender. Byl to export slidu se
   // zapečenými popisky, šipkami a světlými panely — na --bg-deep se čet jako
   // naskenovaná paper figure. Redesign sekce ho nahradil párem stand-real /
@@ -317,6 +358,25 @@ const ASSETS = [
   { src: path.join(CONTEXT, 'context_images', 'measurement_back.png'), slug: 'measure-back', max: 1600 },
   { src: path.join(CONTEXT, 'context_images', 'industry.png'), slug: 'industry', max: 1600 },
   { src: path.join(CONTEXT, 'context_images', 'Logo_white.png'), slug: 'logo-white', max: 800 },
+  // ── GUI Demo — 15 reálných snímků z inspekční komory ─────────────────────
+  // Pět zadních stran (hrubý povrch, díry bez zahloubení), pět předních (broušený
+  // povrch, zahloubené díry) a pět předních s fingerprint defektem. CAPTURE z nich
+  // náhodně losuje, ANALYZE nad nimi kreslí detekční boxy, MEASURE geometrickou
+  // anotaci — souřadnice jsou v gui-demo-frames.js odečtené v NATIVNÍM kádru
+  // 1920×1200, proto se tu nesmí cropovat: crop by je všechny rozešel.
+  // max 1400 = viewport karty má v 4K layoutu ~760 CSS px, 1400 pokrývá 2× DPR.
+  ...[
+    ['Image_001', 'insp-back-01'], ['Image_002', 'insp-back-02'], ['Image_014', 'insp-back-03'],
+    ['Image_015', 'insp-back-04'], ['Image_016', 'insp-back-05'],
+    ['Image_174', 'insp-front-01'], ['Image_175', 'insp-front-02'], ['Image_189', 'insp-front-03'],
+    ['Image_191', 'insp-front-04'], ['Image_209', 'insp-front-05'],
+    ['Image_131', 'insp-defect-01'], ['Image_134', 'insp-defect-02'], ['Image_148', 'insp-defect-03'],
+    ['Image_152', 'insp-defect-04'], ['Image_156', 'insp-defect-05'],
+  ].map(([file, slug]) => ({
+    src: path.join(CONTEXT, 'gui_demo', `${file}.png`),
+    slug,
+    max: 1400,
+  })),
 ];
 
 const SVG_COPY = {
@@ -371,7 +431,7 @@ async function composeSplit(src, { alphaFrom, over, splitX }) {
   return sharp(out, { raw: { width, height, channels: 4 } });
 }
 
-async function processAsset({ src, slug, max, crop, upscale = false, flatten = null, gain = null, alphaKey = null, compose = null }) {
+async function processAsset({ src, slug, max, crop, upscale = false, flatten = null, gain = null, alphaKey = null, negate = false, compose = null }) {
   if (!fs.existsSync(src)) {
     console.warn(`⚠ Missing source: ${src}`);
     return;
@@ -383,7 +443,10 @@ async function processAsset({ src, slug, max, crop, upscale = false, flatten = n
   const composeStamp = compose
     ? [compose.alphaFrom, compose.over].map((p) => (fs.existsSync(p) ? fs.statSync(p).mtimeMs : 0))
     : null;
-  const recipe = JSON.stringify({ src, max, crop: crop ?? null, upscale, flatten, gain, alphaKey, compose, composeStamp });
+  // `negate` se do recipe zapisuje jen když je zapnuté — jinak by přidání
+  // nového klíče invalidovalo cache všech dosavadních assetů a jeden běh
+  // skriptu by přepsal celé public/images bez jediné změny obrazu.
+  const recipe = JSON.stringify({ src, max, crop: crop ?? null, upscale, flatten, gain, alphaKey, ...(negate ? { negate } : {}), compose, composeStamp });
   const metaPath = path.join(OUT, `${slug}.meta.json`);
   if (fs.existsSync(metaPath)) {
     const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
@@ -430,6 +493,11 @@ async function processAsset({ src, slug, max, crop, upscale = false, flatten = n
     }
     resized = sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } });
   }
+
+  // negate: inverze RGB při zachování alfy. Používá lane-a-print — viz
+  // odůvodnění tam. Běží až za alphaKey, aby prahování jasu pracovalo
+  // s původní polaritou.
+  if (negate) resized = resized.negate({ alpha: false });
 
   if (flatten) resized = resized.flatten({ background: flatten });
 

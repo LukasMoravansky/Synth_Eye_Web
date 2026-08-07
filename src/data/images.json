@@ -263,6 +263,30 @@
     "height": 340,
     "aspect": 1
   },
+  "lane-a-bg": {
+    "slug": "lane-a-bg",
+    "width": 512,
+    "height": 512,
+    "aspect": 1
+  },
+  "lane-a-print": {
+    "slug": "lane-a-print",
+    "width": 123,
+    "height": 128,
+    "aspect": 0.9609
+  },
+  "lane-a-alpha": {
+    "slug": "lane-a-alpha",
+    "width": 232,
+    "height": 214,
+    "aspect": 1.0841
+  },
+  "lane-a-composite": {
+    "slug": "lane-a-composite",
+    "width": 512,
+    "height": 512,
+    "aspect": 1
+  },
   "scheme-pipeline": {
     "slug": "scheme-pipeline",
     "width": 1191,
@@ -292,5 +316,95 @@
     "width": 800,
     "height": 322,
     "aspect": 2.4845
+  },
+  "insp-back-01": {
+    "slug": "insp-back-01",
+    "width": 1400,
+    "height": 875,
+    "aspect": 1.6
+  },
+  "insp-back-02": {
+    "slug": "insp-back-02",
+    "width": 1400,
+    "height": 875,
+    "aspect": 1.6
+  },
+  "insp-back-03": {
+    "slug": "insp-back-03",
+    "width": 1400,
+    "height": 875,
+    "aspect": 1.6
+  },
+  "insp-back-04": {
+    "slug": "insp-back-04",
+    "width": 1400,
+    "height": 875,
+    "aspect": 1.6
+  },
+  "insp-back-05": {
+    "slug": "insp-back-05",
+    "width": 1400,
+    "height": 875,
+    "aspect": 1.6
+  },
+  "insp-front-01": {
+    "slug": "insp-front-01",
+    "width": 1400,
+    "height": 875,
+    "aspect": 1.6
+  },
+  "insp-front-02": {
+    "slug": "insp-front-02",
+    "width": 1400,
+    "height": 875,
+    "aspect": 1.6
+  },
+  "insp-front-03": {
+    "slug": "insp-front-03",
+    "width": 1400,
+    "height": 875,
+    "aspect": 1.6
+  },
+  "insp-front-04": {
+    "slug": "insp-front-04",
+    "width": 1400,
+    "height": 875,
+    "aspect": 1.6
+  },
+  "insp-front-05": {
+    "slug": "insp-front-05",
+    "width": 1400,
+    "height": 875,
+    "aspect": 1.6
+  },
+  "insp-defect-01": {
+    "slug": "insp-defect-01",
+    "width": 1400,
+    "height": 875,
+    "aspect": 1.6
+  },
+  "insp-defect-02": {
+    "slug": "insp-defect-02",
+    "width": 1400,
+    "height": 875,
+    "aspect": 1.6
+  },
+  "insp-defect-03": {
+    "slug": "insp-defect-03",
+    "width": 1400,
+    "height": 875,
+    "aspect": 1.6
+  },
+  "insp-defect-04": {
+    "slug": "insp-defect-04",
+    "width": 1400,
+    "height": 875,
+    "aspect": 1.6
+  },
+  "insp-defect-05": {
+    "slug": "insp-defect-05",
+    "width": 1400,
+    "height": 875,
+    "aspect": 1.6
   }
 }
