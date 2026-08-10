@@ -105,7 +105,9 @@ model (scrub, drag, label sync) + a11y/reduced-motion handling.
 
 ### 2.4 GAN výstupy pro Latent Space Navigator (A5) — ✅ DOPLNĚNO (80 reálných snímků)
 
-`public/images/gan_generated/Image_0000–0079.png` doplněno 2026-08-04. `scripts/slice-latent.mjs`
+`assets-src/gan_generated/Image_0000–0079.png` doplněno 2026-08-04 (do 2026-08-10
+v `public/images/gan_generated/`, přesunuto ven — je to vstup pipeline, ne runtime
+asset, a z `public/` se zbytečně deployoval). `scripts/slice-latent.mjs`
 z nich staví plný 10×8 grid (256×256 webp) do `public/images/latent/`, bilineární crossfade
 interpolace mezi reálnými sousedy. Degradace níže (bod 1) je tím vyřešena na plnou verzi.
 

@@ -1,7 +1,16 @@
 ---
 /**
  * Picture — responsive image with AVIF/WebP/PNG fallback
- * Props: slug, alt, class?, loading?, sizes?, inspectable?, label?, confidence?, fetchpriority?
+ * Props: slug, alt, class?, loading?, inspectable?, label?, confidence?, fetchpriority?
+ *
+ * Žádné `sizes` a žádné `w` deskriptory: build-assets.mjs staví z každého
+ * assetu JEDNU šířku, takže `srcset` nemá z čeho vybírat a prohlížeč `sizes`
+ * ignoruje. Prop tu do 2026-08-10 byl a všechna volání ho pečlivě vyplňovala —
+ * bez jakéhokoli efektu. Odstraněn proto, aby kód netvrdil optimalizaci, kterou
+ * nedělá. Skutečné responzivní šířky by znamenaly N variant × 3 formáty
+ * v build pipeline (dist má dnes 97 MB) a přitom největší AVIF váží 131 KB;
+ * až se to vyplatí, vrací se sem `srcset` s `w` deskriptory A ZÁROVEŇ `sizes`,
+ * ne jedno bez druhého.
  *
  * Detekční overlay pro inspection cursor (souřadnice v % rozměru obrázku,
  * formát "left,top,width,height", víc boxů oddělených ";"):
@@ -16,7 +25,6 @@ interface Props {
   alt: string;
   class?: string;
   loading?: 'lazy' | 'eager';
-  sizes?: string;
   inspectable?: boolean;
   label?: string;
   confidence?: number;
@@ -32,7 +40,6 @@ const {
   alt,
   class: className = '',
   loading = 'lazy',
-  sizes = '100vw',
   inspectable = false,
   label,
   confidence,
@@ -75,7 +82,6 @@ const detections = [
       height={height}
       loading={loading}
       decoding="async"
-      sizes={sizes}
       fetchpriority={fetchpriority}
       class="picture-img"
       tabindex={inspectable ? 0 : undefined}

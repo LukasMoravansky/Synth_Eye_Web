@@ -100,6 +100,15 @@ import Picture from './Picture.astro';
     padding-block: 0;
   }
 
+  /* 280vh je rozpočet pro particle oblouk (rozpad → chaos → rekonstrukce),
+     který na dotyku neexistuje. Crossfade má jen prolnutí dvou snímků, takže
+     na telefonu to bylo ~4 tahy palcem přes sekci, kde se skoro nic nemění —
+     nejdelší mrtvý úsek celé stránky. 170vh dává 70vh čistého scrollu, což
+     na prolnutí i na proletění citátu stačí a drží tempo zbytku stránky. */
+  .ptf[data-ptf-mode='crossfade'] {
+    min-height: 170vh;
+  }
+
   .ptf[data-ptf-mode='particles'] .ptf__stage,
   .ptf[data-ptf-mode='crossfade'] .ptf__stage {
     position: sticky;

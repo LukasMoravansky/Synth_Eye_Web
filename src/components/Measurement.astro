@@ -83,7 +83,6 @@ const signed = (v: number) => `${v >= 0 ? '+' : '-'}${Math.abs(v).toFixed(2)}`;
               slug={p.slug}
               alt={`${p.side === 'front' ? 'Front' : 'Back'} side of the machined part, photographed in the inspection chamber`}
               loading="lazy"
-              sizes="(max-width: 900px) 92vw, 46vw"
               inspectable
               label={p.detectionLabel}
               confidence={p.objectConfidence}
@@ -286,5 +285,14 @@ const signed = (v: number) => `${v >= 0 ? '+' : '-'}${Math.abs(v).toFixed(2)}`;
   }
   @media (max-width: 520px) {
     .gauge__ref { margin-left: 0; width: 100%; }
+  }
+  /* Kóta je jediná cesta ze snímku na gauge, ale její terč je definovaný
+     v jednotkách viewBoxu (crop 784–832 px). Na mobilu je snímek ~350px
+     široký, takže 34 jednotek = ~15px dotykový pruh. 64 dá ~29px a přitom se
+     kóty pořád nepřekrývají — leží na různých hranách dílu. Tab je vedle nich
+     taky pod 44px, protože 12px mono + 8px padding dá 36. */
+  @media (pointer: coarse) {
+    .dim__hit { stroke-width: 64; }
+    .measurement-tab { padding-block: var(--space-3); }
   }
 </style>

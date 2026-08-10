@@ -16,6 +16,21 @@ const GRAPH_NS = 'http://www.w3.org/2000/svg';
 const GRAPH_W = 780;
 const GRAPH_H = 300;
 const GRAPH_M = { t: 12, r: 44, b: 46, l: 52 };
+/** Šířka, pro kterou je sazba grafu authorovaná (1 user unit = 1 px). */
+const GRAPH_REF_W = 640;
+/** Nad tímhle násobkem už by popisky os do sebe narazily. */
+const GRAPH_K_MAX = 2.2;
+
+/* Graf má fixní viewBox 780×300 a `width: 100%`. Na desktopu je karta ~600px
+   široká, takže user unit ≈ px a 12,5 se vykreslí jako 12,5px. Na telefonu
+   se karta zúží na ~300px (měřítko 0.39) a TÁŽ sazba doskočí na ~5px, tedy
+   pod hranici čitelnosti — a graf je jediný nosič té informace, popisek pod
+   ním osy nepopisuje. Značky i typografii proto škálujeme v user units podle
+   skutečné šířky, aby render zůstal kolem 11px na jakémkoli viewportu. */
+function graphScale(svg) {
+  const w = svg?.clientWidth || GRAPH_REF_W;
+  return Math.min(GRAPH_K_MAX, Math.max(1, GRAPH_REF_W / w));
+}
 
 function ts() {
   const d = new Date();
@@ -326,8 +341,18 @@ export default function init(root) {
     if (!graphSvg) return;
     graphSvg.replaceChildren();
 
-    const plotW = GRAPH_W - GRAPH_M.l - GRAPH_M.r;
-    const plotH = GRAPH_H - GRAPH_M.t - GRAPH_M.b;
+    /* k > 1 jen na úzkých kartách. Marže musí povolit spolu se sazbou (jinak
+       popisky osy Y vyjedou doleva a koncové hodnoty křivek doprava) a spodní
+       pásmo popisků roste do VÝŠKY viewBoxu — plocha grafu tedy zůstává stejná
+       a jen karta o pár pixelů narostě, což je na mobilu jednosloupcové. */
+    const k = graphScale(graphSvg);
+    const ml = GRAPH_M.l + (k - 1) * 48;
+    const mr = GRAPH_M.r + (k - 1) * 30;
+    const mb = GRAPH_M.b + (k - 1) * 34;
+    const H = GRAPH_H + (mb - GRAPH_M.b);
+    graphSvg.setAttribute('viewBox', `0 0 ${GRAPH_W} ${H}`);
+    const plotW = GRAPH_W - ml - mr;
+    const plotH = H - GRAPH_M.t - mb;
     const pointCount = series.ok.length;
     const iterations = pointCount - 1;
 
@@ -336,22 +361,22 @@ export default function init(root) {
     const yMax = Math.max(10, Math.ceil(Math.max(...allValues) / 5) * 5);
     const yStep = yMax / 5;
 
-    const sx = (v) => GRAPH_M.l + (v / xMax) * plotW;
+    const sx = (v) => ml + (v / xMax) * plotW;
     const sy = (v) => GRAPH_M.t + plotH - (v / yMax) * plotH;
 
     for (let v = 0; v <= yMax; v += yStep) {
       graphSvg.appendChild(svgEl('line', {
-        class: 'gui-graph__grid', x1: GRAPH_M.l, x2: GRAPH_M.l + plotW, y1: sy(v), y2: sy(v),
+        class: 'gui-graph__grid', x1: ml, x2: ml + plotW, y1: sy(v), y2: sy(v),
       }));
       const label = svgEl('text', {
-        class: 'gui-graph__tick', x: GRAPH_M.l - 12, y: sy(v) + 4, 'text-anchor': 'end', 'font-size': 12.5,
+        class: 'gui-graph__tick', x: ml - 12 * k, y: sy(v) + 4 * k, 'text-anchor': 'end', 'font-size': 12.5 * k,
       });
       label.textContent = String(v);
       graphSvg.appendChild(label);
     }
 
-    graphSvg.appendChild(svgEl('line', { class: 'gui-graph__axis', x1: GRAPH_M.l, x2: GRAPH_M.l, y1: GRAPH_M.t, y2: GRAPH_M.t + plotH }));
-    graphSvg.appendChild(svgEl('line', { class: 'gui-graph__axis', x1: GRAPH_M.l, x2: GRAPH_M.l + plotW, y1: GRAPH_M.t + plotH, y2: GRAPH_M.t + plotH }));
+    graphSvg.appendChild(svgEl('line', { class: 'gui-graph__axis', x1: ml, x2: ml, y1: GRAPH_M.t, y2: GRAPH_M.t + plotH }));
+    graphSvg.appendChild(svgEl('line', { class: 'gui-graph__axis', x1: ml, x2: ml + plotW, y1: GRAPH_M.t + plotH, y2: GRAPH_M.t + plotH }));
 
     const xTickStep = Math.max(1, Math.ceil(xMax / 10));
     const xTicks = [];
@@ -359,30 +384,33 @@ export default function init(root) {
     if (xTicks[xTicks.length - 1] !== xMax) xTicks.push(xMax);
     xTicks.forEach((v) => {
       graphSvg.appendChild(svgEl('line', {
-        class: 'gui-graph__axis', x1: sx(v), x2: sx(v), y1: GRAPH_M.t + plotH, y2: GRAPH_M.t + plotH + 5,
+        class: 'gui-graph__axis', x1: sx(v), x2: sx(v), y1: GRAPH_M.t + plotH, y2: GRAPH_M.t + plotH + 5 * k,
       }));
       const label = svgEl('text', {
-        class: 'gui-graph__tick', x: sx(v), y: GRAPH_M.t + plotH + 20, 'text-anchor': 'middle', 'font-size': 12.5,
+        class: 'gui-graph__tick', x: sx(v), y: GRAPH_M.t + plotH + 20 * k, 'text-anchor': 'middle', 'font-size': 12.5 * k,
       });
       label.textContent = String(v);
       graphSvg.appendChild(label);
     });
 
     const xTitle = svgEl('text', {
-      class: 'gui-graph__label', x: GRAPH_M.l + plotW / 2, y: GRAPH_H - 6, 'text-anchor': 'middle', 'font-size': 12.5,
+      class: 'gui-graph__label', x: ml + plotW / 2, y: H - 6, 'text-anchor': 'middle', 'font-size': 12.5 * k,
     });
     xTitle.textContent = 'Iteration';
     graphSvg.appendChild(xTitle);
+    /* x zůstává 16 i při k > 1 — celý přírůstek levé marže patří popiskům osy,
+       aby se svislý titulek nedostal pod ně. */
+    const yTitleY = GRAPH_M.t + plotH / 2;
     const yTitle = svgEl('text', {
-      class: 'gui-graph__label', x: 16, y: GRAPH_M.t + plotH / 2, 'text-anchor': 'middle', 'font-size': 12.5,
-      transform: `rotate(-90 16 ${GRAPH_M.t + plotH / 2})`,
+      class: 'gui-graph__label', x: 16, y: yTitleY, 'text-anchor': 'middle', 'font-size': 12.5 * k,
+      transform: `rotate(-90 16 ${yTitleY})`,
     });
     yTitle.textContent = 'Total';
     graphSvg.appendChild(yTitle);
 
     if (iterations === 0) {
       const nodata = svgEl('text', {
-        class: 'gui-graph__nodata', x: GRAPH_M.l + plotW / 2, y: GRAPH_M.t + plotH / 2, 'text-anchor': 'middle', 'font-size': 13,
+        class: 'gui-graph__nodata', x: ml + plotW / 2, y: GRAPH_M.t + plotH / 2, 'text-anchor': 'middle', 'font-size': 13 * k,
       });
       nodata.textContent = 'NO DATA — RUN ANALYZE';
       graphSvg.appendChild(nodata);
@@ -403,7 +431,7 @@ export default function init(root) {
       const lastSegLen = pts.length > 1 ? totalLen - segLens[segLens.length - 2] : 0;
 
       const polyline = svgEl('polyline', {
-        class: `gui-serie gui-serie--${key}`, points: pointsAttr, 'stroke-width': 2.2,
+        class: `gui-serie gui-serie--${key}`, points: pointsAttr, 'stroke-width': 2.2 * k,
         'stroke-linejoin': 'round', 'stroke-linecap': 'round',
       });
       if (!prefersReducedMotion() && animate && lastSegLen > 0) {
@@ -416,7 +444,7 @@ export default function init(root) {
       }
 
       pts.forEach((p, i) => {
-        const dot = svgEl('circle', { class: `gui-serie-dot--${key}`, cx: p[0], cy: p[1], r: 2.6 });
+        const dot = svgEl('circle', { class: `gui-serie-dot--${key}`, cx: p[0], cy: p[1], r: 2.6 * k });
         const isNew = animate && i === pts.length - 1 && pts.length > 1;
         if (!prefersReducedMotion() && isNew) dot.style.opacity = '0';
         graphSvg.appendChild(dot);
@@ -425,7 +453,7 @@ export default function init(root) {
 
       const last = pts[pts.length - 1];
       const endLabel = svgEl('text', {
-        class: `gui-graph__label gui-serie-end--${key}`, x: last[0] + 12, y: last[1] + 5, 'font-size': 14,
+        class: `gui-graph__label gui-serie-end--${key}`, x: last[0] + 12 * k, y: last[1] + 5 * k, 'font-size': 14 * k,
       });
       endLabel.textContent = String(data[data.length - 1]);
       graphSvg.appendChild(endLabel);
@@ -601,4 +629,18 @@ export default function init(root) {
   setButtons();
   renderGraph(false);
   updateCaption();
+
+  /* Rotace telefonu mění šířku karty o víc než dvojnásobek, takže i k. Bez
+     překreslení by graf zůstal v sazbě pro předchozí orientaci. Rozdíl v k
+     je podmínka, aby každý resize (i vysunutí adresního řádku) nepřekresloval
+     celé SVG zbytečně. */
+  if (graphSvg) {
+    let lastK = graphScale(graphSvg);
+    window.addEventListener('resize', () => {
+      const next = graphScale(graphSvg);
+      if (Math.abs(next - lastK) < 0.05) return;
+      lastK = next;
+      renderGraph(false);
+    }, { passive: true });
+  }
 }

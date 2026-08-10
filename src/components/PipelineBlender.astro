@@ -193,7 +193,7 @@ const SHARED = ['same lens', 'same lighting', 'same material', 'same crop'];
           {TWINS.map(({ slug, kind, title, meta, alt }) => (
             <figure class:list={['twin__card', `twin__card--${kind}`]}>
               <div class="twin__frame viewfinder">
-                <Picture slug={slug} alt={alt} loading="lazy" sizes="(max-width: 768px) 92vw, 44vw" />
+                <Picture slug={slug} alt={alt} loading="lazy" />
               </div>
               <figcaption class="twin__origin mono">
                 <b>{title}</b><span>{meta}</span>
@@ -230,7 +230,6 @@ const SHARED = ['same lens', 'same lighting', 'same material', 'same crop'];
                 slug="material-split"
                 alt="One part, split down the middle: the left portion is untextured geometry, the right portion is the same surface with PBR textures, brushed aluminium with a fingerprint"
                 loading="lazy"
-                sizes="(max-width: 900px) 88vw, 300px"
               />
               <span class="material__edge" aria-hidden="true"></span>
             </div>
@@ -254,7 +253,7 @@ const SHARED = ['same lens', 'same lighting', 'same material', 'same crop'];
               {MATERIALS.map(({ slug, title, meta, alt }) => (
                 <figure class="mat-pair__item">
                   <div class="mat-pair__frame">
-                    <Picture slug={slug} alt={alt} loading="lazy" sizes="(max-width: 900px) 40vw, 150px" />
+                    <Picture slug={slug} alt={alt} loading="lazy" />
                   </div>
                   <figcaption class="mono"><b>{title}</b><span>{meta}</span></figcaption>
                 </figure>
@@ -296,7 +295,6 @@ const SHARED = ['same lens', 'same lighting', 'same material', 'same crop'];
                     slug={`synth-${key}-0${i + 1}`}
                     alt=""
                     loading="lazy"
-                    sizes="(max-width: 900px) 24vw, 12vw"
                   />
                 </div>
               ))}
@@ -313,7 +311,6 @@ const SHARED = ['same lens', 'same lighting', 'same material', 'same crop'];
                   slug={`synth-defect-0${i + 1}`}
                   alt=""
                   loading="lazy"
-                  sizes="(max-width: 900px) 32vw, 11vw"
                 />
               </div>
             ))}
@@ -341,7 +338,6 @@ const SHARED = ['same lens', 'same lighting', 'same material', 'same crop'];
                     slug={slug}
                     alt={alt}
                     loading="lazy"
-                    sizes="(max-width: 768px) 44vw, 22vw"
                     inspectable
                     label={DETECTION_CLASS}
                     confidence={confidence}

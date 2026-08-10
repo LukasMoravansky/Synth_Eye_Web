@@ -236,8 +236,12 @@
   /* Graf staví vlastní markup (mřížka, osy, popisky, křivky) v JS přes
      document.createElementNS — stejný důvod pro :global() jako u .gui-overlay
      a .gui-measure výše: elementy nikdy nedostanou `data-astro-cid-*`. */
-  .gui-graph :global(.gui-graph__grid) { stroke: var(--border); stroke-width: 1; }
-  .gui-graph :global(.gui-graph__axis) { stroke: var(--border-hover); stroke-width: 1; }
+  /* non-scaling-stroke: viewBox je 780 široký, na telefonu se vykresluje na
+     ~300px, takže 1 user unit = 0,39px — mřížka i osy by se rozpadly na
+     nedokreslené hairliny. Sazbu a značky škáluje gui-demo.js v user units,
+     linky mřížky mají zůstat přesně 1px na každé šířce. */
+  .gui-graph :global(.gui-graph__grid) { stroke: var(--border); stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .gui-graph :global(.gui-graph__axis) { stroke: var(--border-hover); stroke-width: 1; vector-effect: non-scaling-stroke; }
   .gui-graph :global(.gui-graph__tick),
   .gui-graph :global(.gui-graph__label) { font-family: var(--font-mono); }
   .gui-graph :global(.gui-graph__tick) { fill: var(--text-muted); }
@@ -286,16 +290,34 @@
     color: var(--text-muted);
   }
   .gui-demo__repo { margin-top: var(--space-4); font-size: var(--fs-mono-sm); }
+  /* Toolbar je SEKVENCE (CONNECT → CAPTURE → ANALYZE → MEASURE), ne sada —
+     pořadí i role="toolbar" proto zůstávají. Pod 560 px se ale 5 × 80 px + gapy
+     (≈432 px) do řádku nevejde a vodorovný scroll nemá žádnou afordanci:
+     MEASURE a CLEAR byly mimo obraz a demo na telefonu nešlo dojet do konce.
+     Zalomení do dvou řádků je jediná varianta, která drží celou sekvenci vidět.
+     Basis 33 % = tři tlačítka na první řádek (na 360 px vychází ~90 px na
+     tlačítko), zbylá dvě se na druhém roztáhnou. Výška 44 px z .gui-btn platí
+     dál — je to touch target. */
   @media (max-width: 560px) {
     .gui-disclaimer { flex-direction: column; gap: var(--space-2); }
+    .gui-toolbar { flex-wrap: wrap; overflow-x: visible; }
+    .gui-btn { flex: 1 1 calc(33.333% - var(--space-2)); min-width: 0; }
   }
   @media (max-width: 1024px) {
     .gui-app { grid-template-columns: 1fr 1fr; }
     .gui-card--camera { grid-column: 1 / -1; grid-row: auto; }
+    /* Logger a graf tečou vedle sebe (oba unesou půl šířky), info je pod nimi
+       přes obě kolony. Dřív měly všechny tři natvrdo `grid-column: 1`, takže
+       v rozsahu 769–1024 px spadly do levé poloviny a pravá zůstala prázdná.
+       Zúžit celý breakpoint na 1fr by naopak zbytečně zahodilo šířku, kterou
+       tablet má — logger i graf jsou širší prvky než čtyřřádkové info. */
     .gui-card--logger,
-    .gui-card--graph,
+    .gui-card--graph {
+      grid-column: auto;
+      grid-row: auto;
+    }
     .gui-card--info {
-      grid-column: 1;
+      grid-column: 1 / -1;
       grid-row: auto;
     }
   }

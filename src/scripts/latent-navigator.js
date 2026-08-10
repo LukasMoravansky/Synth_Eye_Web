@@ -9,6 +9,16 @@ const SETTLED = 0.0004;
    full-cell crossfade would read as a double exposure, not as interpolation. */
 const BLEND_BAND = 0.42;
 
+/* Nápověda musí odpovídat ukazovátku, jinak slibuje interakce, které tam
+   nejsou: klávesové zkratky na dotyku neexistují a display má od opravy
+   scroll trapu `touch-action: pan-y`, tedy svislý tah přes něj patří stránce.
+   Zbývá vodorovný tah a tap do mapy (ta polohu nastavuje absolutně, takže
+   jeden tap nese obě osy). Vzor převzatý z compositing-deck.js.
+   Variantu pro fine pointer drží markup (LatentNavigator.astro), tady je jen
+   to, čím se na dotyku přepíše. */
+const KEYS_COARSE = ['tap the map', 'drag across'];
+const VIEWER_HINT_COARSE = 'tap the map below';
+
 let navigatorInitialized = false;
 
 /* --- GAN architecture diagram flow (same section, scroll-scrubbed) --- */
@@ -107,6 +117,21 @@ export default function init(root) {
   if (!display || !plane || layers.length < 4) return;
 
   const reduced = prefersReducedMotion();
+
+  if (!isFinePointer()) {
+    const keysEl = navRoot.querySelector('[data-latent-keys]');
+    if (keysEl) {
+      keysEl.replaceChildren(
+        ...KEYS_COARSE.map((label) => {
+          const span = document.createElement('span');
+          span.textContent = label;
+          return span;
+        })
+      );
+    }
+    const viewerHint = navRoot.querySelector('[data-latent-hint]');
+    if (viewerHint) viewerHint.textContent = VIEWER_HINT_COARSE;
+  }
 
   /* Start on a real lattice node, not the geometric centre — 0.5 falls mid-cell
      on an odd lattice and would open on a four-way blend. */

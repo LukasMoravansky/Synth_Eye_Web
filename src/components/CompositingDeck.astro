@@ -368,7 +368,6 @@ const fmt = (v: number) => v.toFixed(6);
     border: 1px solid var(--border);
     background: transparent;
     cursor: grab;
-    touch-action: none;
     /* Žádný přechod na transform: scrub i tah zapisují transform každý frame
        a interpolace by je táhla za kurzorem. Vysunutí zvýrazněné vrstvy
        tweenuje JS na vlastní hodnotě, takže je plynulé bez toho zpoždění. */
@@ -414,6 +413,17 @@ const fmt = (v: number) => v.toFixed(6);
   .plate__risers i:nth-child(4) {
     right: 0;
     top: 100%;
+  }
+  /* `touch-action: none` smí platit jen tam, kde tah opravdu běží. Tah je
+     v compositing-deck.js podmíněný fine pointerem (na dotyku je interakce
+     tap → izolace vrstvy), takže bezpodmínečné vypnutí gest znamenalo, že se
+     přes dlaždice nedalo scrollovat A ZÁROVEŇ tam JS nic nedělal — mrtvá
+     plocha přes celou šířku sekce. Média je proto stejná podmínka jako
+     `isFinePointer()`, aby se CSS a JS nemohly znovu rozejít. */
+  @media (hover: hover) and (pointer: fine) {
+    .plate {
+      touch-action: none;
+    }
   }
   .plate:active {
     cursor: grabbing;

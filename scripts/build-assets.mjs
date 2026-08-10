@@ -9,6 +9,10 @@ const CONTEXT = path.join(ROOT, '.claude', 'context');
 const DEC = path.join(CONTEXT, 'context_images', 'decomposed');
 // Mezikroky jednoho běhu compositoru (seed 0050) + jeho YOLO label.
 const LANE_A = path.join(CONTEXT, 'context_images', 'lane-a');
+// 80 surových GAN výstupů — vstup pipeline, ne runtime asset. Do 2026-08-10
+// ležely v public/images/gan_generated/ a deployovaly se, přestože je stránka
+// nestahuje. Stejný adresář čte scripts/slice-latent.mjs.
+const GAN_RAW = path.join(ROOT, 'assets-src', 'gan_generated');
 const OUT = path.join(ROOT, 'public', 'images');
 const DATA_DIR = path.join(ROOT, 'src', 'data');
 
@@ -122,7 +126,7 @@ const ASSETS = [
   // součást transformace, ne jako chyba. Defekt se ale během přechodu
   // „přestěhuje", což je vizuálně silnější, ale sémanticky volnější tvrzení.
   {
-    src: path.join(ROOT, 'public', 'images', 'gan_generated', 'Image_0076.png'),
+    src: path.join(GAN_RAW, 'Image_0076.png'),
     slug: 'transition-gan',
     max: 512,
     upscale: true,

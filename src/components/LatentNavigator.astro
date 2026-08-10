@@ -33,6 +33,9 @@
         <line x1="0" y1="50" x2="100" y2="50" />
       </svg>
 
+      {/* Obě nápovědy níže platí pro fine pointer; na dotyku je přepíše
+          latent-navigator.js podle toho, co tam po `touch-action: pan-y`
+          skutečně funguje. */}
       <span class="latent-nav__hint mono" data-latent-hint aria-hidden="true">drag to traverse</span>
     </div>
   </div>
@@ -61,7 +64,7 @@
       surface state down. Every position between nodes is a blend that exists in no
       source frame.
     </p>
-    <p class="latent-nav__keys mono" id="latent-nav-hint">
+    <p class="latent-nav__keys mono" id="latent-nav-hint" data-latent-keys>
       <span>drag</span><span>arrows</span><span>home = reset</span>
     </p>
     <p class="sr-only" aria-live="polite" data-latent-live></p>
@@ -99,7 +102,9 @@
     border: 1px solid rgba(255, 255, 255, 0.09);
     overflow: hidden;
     cursor: grab;
-    touch-action: none;
+    /* Viz poznámka u .latent-nav__plane — na dotyku si svislou osu gesta bere
+       stránka, vodorovná zůstává navigátoru. */
+    touch-action: pan-y;
     user-select: none;
     transition: border-color var(--dur-fast) ease;
   }
@@ -232,7 +237,24 @@
     border: 1px solid var(--border);
     background: var(--bg-deep);
     cursor: crosshair;
-    touch-action: none;
+    /* Viz poznámka níže — mapa je absolutní, takže i jediný tap nastaví obě osy. */
+    touch-action: pan-y;
+  }
+
+  /* `touch-action: none` jen pro fine pointer.
+     Na dotyku bral display (pod 799 px čtverec min(82vw, 42vh)) celou šířku
+     obrazovky a svislý tah přes něj se nikam nedostal — uživatel musel trefit
+     úzký okraj, aby sekci proscrolloval.
+     `pan-y` je kompromis, který nezavírá ani jednu cestu: svislé gesto pustí
+     stránku, vodorovné pořád táhne orientační osou, a protože mapa polohu
+     nastavuje ABSOLUTNĚ (setFromMap běží už na pointerdown), zůstává jediný
+     tap do mapy plným 2D vstupem — tedy i osa „surface", kterou by samotný
+     vodorovný tah nedosáhl. Nápovědu k tomu přepisuje latent-navigator.js. */
+  @media (hover: hover) and (pointer: fine) {
+    .latent-nav__display,
+    .latent-nav__plane {
+      touch-action: none;
+    }
   }
 
   .latent-nav__plane canvas {
@@ -376,8 +398,12 @@
     }
   }
 
-  /* Short viewports — trim to what is load-bearing. */
-  @media (max-height: 800px) {
+  /* Short viewports — trim to what is load-bearing.
+     Podmínka na ukazovátko je nutná: běžný telefon má viewport 650–850 px, takže
+     samotná výška schovávala vysvětlení prvku právě tam, kde je interakce
+     nejhůř objevitelná. Na nízkém desktopovém okně je skrytí pořád obhajitelné
+     — myš má hover, reticle i hint, tedy jiné cesty, jak na to přijít. */
+  @media (max-height: 800px) and (hover: hover) and (pointer: fine) {
     .latent-nav__caption {
       display: none;
     }

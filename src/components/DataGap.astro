@@ -36,7 +36,6 @@ const cadSteps = [
               label="Cls_Obj_Front_Side"
               confidence={99.15}
               box="23,13,57,69"
-              sizes="(max-width: 768px) 45vw, 22vw"
             />
             <figcaption class="mono"><i class="gap-part__dot" aria-hidden="true"></i>clean</figcaption>
           </figure>
@@ -52,7 +51,6 @@ const cadSteps = [
               defectLabel="Cls_Defect_Fingerprint"
               defectConfidence={92.93}
               defects="24.3,12.9,20.6,31.4;56.9,23.2,14.4,18.5"
-              sizes="(max-width: 768px) 45vw, 22vw"
             />
             <figcaption class="mono"><i class="gap-part__dot" aria-hidden="true"></i>defected</figcaption>
           </figure>
@@ -106,15 +104,15 @@ const cadSteps = [
               přesně ta hrana, za kterou už je díl vyrenderovaný. Světlo tedy
               render „namaluje", nepřekrývá ho. */}
           <div class="cad-layer cad-layer--solid" data-cad-solid aria-hidden="true">
-            <Picture slug="cad-solid" alt="" loading="lazy" sizes="(max-width: 768px) 60vw, 20vw" />
+            <Picture slug="cad-solid" alt="" loading="lazy" />
           </div>
 
           <div class="cad-layer cad-layer--pbr" data-cad-pbr aria-hidden="true">
-            <Picture slug="cad-pbr" alt="" loading="lazy" sizes="(max-width: 768px) 60vw, 20vw" />
+            <Picture slug="cad-pbr" alt="" loading="lazy" />
           </div>
 
           <div class="cad-layer cad-layer--light" data-cad-light aria-hidden="true">
-            <Picture slug="cad-light" alt="" loading="lazy" sizes="(max-width: 768px) 60vw, 20vw" />
+            <Picture slug="cad-light" alt="" loading="lazy" />
           </div>
 
           <div class="cad-layer cad-layer--render" data-cad-render>
@@ -122,7 +120,6 @@ const cadSteps = [
               slug="cad-render"
               alt="The part as a physically rendered frame — the same geometry Blender built from the CAD model"
               loading="lazy"
-              sizes="(max-width: 768px) 60vw, 20vw"
             />
           </div>
 

@@ -369,7 +369,17 @@ export default function init(root) {
   if (status) status.textContent = HINT;
 
   let resizeRaf = 0;
+  /* Kádr se počítá i z window.innerHeight (measure → byHeight), a ta se na
+     mobilu mění pokaždé, když se schová nebo objeví adresní řádek — stack se
+     tedy přeskládal uprostřed scrollu. ScrollTrigger je proti témuž chráněný
+     přes `ignoreMobileResize` ve scroll-setup.js, tenhle listener ne.
+     Podpis URL baru je „změnila se jen výška"; na fine pointeru takový resize
+     znamená skutečnou změnu okna, takže se tam přeměřuje dál beze změny. */
+  let lastWidth = window.innerWidth;
   window.addEventListener('resize', () => {
+    const widthChanged = window.innerWidth !== lastWidth;
+    lastWidth = window.innerWidth;
+    if (!widthChanged && !isFinePointer()) return;
     cancelAnimationFrame(resizeRaf);
     resizeRaf = requestAnimationFrame(() => {
       const before = frame;

@@ -3,7 +3,9 @@ import path from 'node:path';
 import sharp from 'sharp';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const SRC_DIR = path.join(ROOT, 'public', 'images', 'gan_generated');
+/* Zdrojové GAN výstupy leží MIMO public/ — jsou to vstupy build pipeline,
+   stránka je nikdy nestahuje, ale z public/ by se deployovaly (80 PNG, 7,6 MB). */
+const SRC_DIR = path.join(ROOT, 'assets-src', 'gan_generated');
 const OUT = path.join(ROOT, 'public', 'images', 'latent');
 
 const COLS = 10;

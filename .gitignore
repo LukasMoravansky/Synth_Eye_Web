@@ -55,7 +55,9 @@ ehthumbs.db
 # tracked ZŮSTÁVAJÍ (bez nich se build neprovede):
 #   · .claude/context/context_images/**      vstupy pro build-assets.mjs
 #   · .claude/context/Synth.Eye - html/**    logo.svg pro build-og.mjs
-#   · public/images/gan_generated/**         vstup pro build-assets + slice-latent
+#   · assets-src/gan_generated/**            vstup pro build-assets + slice-latent
+#                                            (do 2026-08-10 v public/images/, odkud
+#                                            se zbytečně deployoval)
 #   · public/fonts/**                        stahuje se ručně přes `npm run fonts`,
 #                                            NENÍ součástí build pipeline
 #
@@ -65,8 +67,6 @@ ehthumbs.db
 # ─────────────────────────────────────────────────────────────────────────────
 
 # build-assets.mjs → public/images/<slug>.{avif,webp,png} + .meta.json
-# (glob `*` v gitignore nepřechází přes `/`, takže podadresář gan_generated/
-#  s originály zůstává tracked)
 public/images/*.avif
 public/images/*.webp
 public/images/*.png
@@ -77,7 +77,7 @@ public/images/logo-light.svg
 src/data/images.json
 src/data/lqip.json
 
-# slice-latent.mjs → dlaždice Latent Navigatoru z gan_generated/
+# slice-latent.mjs → dlaždice Latent Navigatoru z assets-src/gan_generated/
 public/images/latent/
 
 # build-og.mjs → OG karta a favicony

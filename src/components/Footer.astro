@@ -83,4 +83,15 @@ const contributors = [
     .footer__brand { grid-column: 1 / -1; }
   }
   @media (max-width: 480px) { .footer__grid { grid-template-columns: 1fr; } }
+  /* 12px mono řádek = ~20px terč, a jsou tři pod sebou. inline-block + padding
+     dá 40px, aniž by se rozhodila sazba sloupce; `align-items: center` v .footer
+     nikde nekoliduje, protože odkazy jsou v <li> na vlastním řádku. */
+  @media (pointer: coarse) {
+    .footer__links a,
+    .footer__institution a {
+      display: inline-block;
+      padding-block: var(--space-3);
+    }
+    .footer__links li + li { margin-top: 0; }
+  }
 </style>

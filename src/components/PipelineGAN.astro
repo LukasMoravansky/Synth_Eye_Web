@@ -166,6 +166,12 @@ const TRADEOFF = [
               <text x="162" y="182" class="lane">lane b · as generated</text>
             </svg>
           </div>
+          {/* Mapa je pod ~720px širší než viewport a scrolluje se vodorovně.
+              Mobilní scrollbary jsou ale neviditelné, dokud se nescrolluje, takže
+              tam nebylo NIC, co by prozradilo, že vpravo pokračuje druhá dráha.
+              Nápověda je aria-hidden — pro odečítač je celý obsah mapy vypsaný
+              v .sr-only odstavci níž, kde na směru scrollu nezáleží. */}
+          <p class="gan-map__hint mono" aria-hidden="true">swipe the map <span>→</span></p>
           <p class="sr-only">
             front.pkl and fingerprint.pkl feed a compositor that runs eleven operations
             including pressure simulation; its output joins the YOLO training set as image
@@ -426,6 +432,25 @@ const TRADEOFF = [
   .gan-map__scroll {
     overflow-x: auto;
     overscroll-behavior-x: contain;
+  }
+  /* Jen na dotyku: myš má viditelný scrollbar a na desktopu se mapa navíc
+     v 880px vejde celá, takže by nápověda lhala. */
+  .gan-map__hint {
+    display: none;
+    margin: var(--space-3) 0 0;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .gan-map__hint span {
+    margin-left: var(--space-2);
+    color: var(--accent-light);
+  }
+  @media (pointer: coarse) and (max-width: 720px) {
+    .gan-map__hint {
+      display: block;
+    }
   }
   .gan-map__svg {
     display: block;

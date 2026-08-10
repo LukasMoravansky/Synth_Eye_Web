@@ -144,8 +144,13 @@ function init() {
     py = ty;
     const d = prefersReducedMotion() ? 0 : 0.22;
     gsap.to(boxes, { opacity: 1, duration: d });
-    gsap.to(ring, { opacity: 1, scale: 1, duration: d, ease: 'power2.out' });
-    if (!isFinePointer()) return;
+    /* Ring je kurzor. Na dotyku žádný kurzor není — a protože jeho transform
+       zapisuje výhradně tick(), který na coarse pointeru neběžel, zůstával
+       ring na left/top 0 s margin −36px, tedy jako accent kruh napůl venku
+       v levém horním rohu obrazovky při KAŽDÉM tapnutí na snímek. */
+    if (isFinePointer()) {
+      gsap.to(ring, { opacity: 1, scale: 1, duration: d, ease: 'power2.out' });
+    }
     if (!raf) raf = requestAnimationFrame(tick);
   }
 
@@ -162,9 +167,15 @@ function init() {
       raf = 0;
       return;
     }
-    px += (tx - px) * 0.2;
-    py += (ty - py) * 0.2;
-    ring.style.transform = `translate(${px}px, ${py}px) scale(1)`;
+    if (isFinePointer()) {
+      px += (tx - px) * 0.2;
+      py += (ty - py) * 0.2;
+      ring.style.transform = `translate(${px}px, ${py}px) scale(1)`;
+    }
+    /* Smyčka musí běžet i na dotyku: boxy jsou `position: fixed`, takže bez
+       přepočtu zůstanou stát ve viewportu, kdežto snímek pod nimi odjede se
+       scrollem — tap a jedno švihnutí palcem stačilo, aby rámečky visely
+       přes úplně jiný obsah po celou dobu 2,5s okna. */
     placeBoxes(active); // fixed boxy musí sledovat scroll (Lenis) i resize
     raf = requestAnimationFrame(tick);
   }
