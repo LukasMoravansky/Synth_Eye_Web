@@ -1,58 +1,177 @@
 ---
 import Picture from './Picture.astro';
+import { sides, DIM_SPECS, TOLERANCE } from '../scripts/data/measure-sides.js';
+import { buildDims, pxPerMm } from '../scripts/lib/dim-geometry.js';
 
-const frontDims = [
-  { id: 'height', label: 'Height', ref: 60.0, tol: 3.0, value: 62.08, x: 15, y: 8 },
-  { id: 'width', label: 'Width', ref: 40.0, tol: 3.0, value: 41.02, x: 75, y: 45 },
-  { id: 'hole-diameter', label: 'Hole ⌀', ref: 6.0, tol: 3.0, value: 6.10, x: 35, y: 55 },
-  { id: 'hole-distance', label: 'Hole dist.', ref: 25.0, tol: 3.0, value: 25.20, x: 55, y: 70 },
-];
+/* Gauge škála: dráha pokrývá ref ± 1,5·tol, zelený tolerance band tedy leží
+   uvnitř mezi 16,67 % a 83,33 % a nominál je přesně ve středu. Jehla a band
+   MUSÍ počítat ze stejné škály — do 08-10 měl band pevný `inset: 0 20%`, kdežto
+   jehla mapovala ref±tol na celou dráhu, takže Height 62.08 stálo na 84,7 %
+   dráhy, tedy VPRAVO ZA zeleným pásmem, a přitom hlásilo PASS. */
+const SPAN = 3; // násobek tolerance na celou šířku dráhy
+const BAND_INSET = +((100 * (SPAN - 2)) / (2 * SPAN)).toFixed(3); // 16.667 %
+
+const panels = sides.map((side) => {
+  const dims = buildDims(side);
+  const gauges = DIM_SPECS.map((spec) => {
+    const value = side.measured[spec.key];
+    const dev = value - spec.ref;
+    const pass = Math.abs(dev) <= TOLERANCE;
+    return {
+      ...spec,
+      value,
+      dev,
+      pass,
+      // Podíl vyčerpané tolerance. Čtyři shodné „PASS" nic neříkají; tohle ano —
+      // u výšky je vyčerpáno 69 %, u průměru díry 3 %.
+      budget: Math.round((Math.abs(dev) / TOLERANCE) * 100),
+      pct: +(50 + (dev / (SPAN * TOLERANCE)) * 100).toFixed(2),
+      dim: dims.find((d) => d.id === spec.id),
+    };
+  });
+  return {
+    ...side,
+    dims,
+    gauges,
+    scale: pxPerMm(side),
+    allPass: gauges.every((g) => g.pass),
+    viewBox: `${side.crop.left} ${side.crop.top} ${side.crop.width} ${side.crop.height}`,
+  };
+});
+
+const fmt = (v: number) => v.toFixed(2);
+const signed = (v: number) => `${v >= 0 ? '+' : '-'}${Math.abs(v).toFixed(2)}`;
 ---
 
 <section id="measurement" class="measurement section" aria-labelledby="measurement-heading" data-measurement>
   <div class="container">
-    <h2 id="measurement-heading" data-reveal>From pixel to millimeter</h2>
-    <p class="measurement__lead" data-reveal>From pixel to millimeter. Every part is measured, every tolerance verified.</p>
+    <header class="measurement__head">
+      <h2 id="measurement-heading" data-reveal>From pixel to millimeter</h2>
+      <p class="measurement__lead" data-reveal>
+        Detection says <em>what</em> is on the part. Metrology says <em>how big</em> it is —
+        every part measured, every tolerance verified.
+      </p>
+    </header>
 
-    <div class="measurement-grid">
-      <div class="measurement-visual" data-reveal>
-        <div class="measurement-tabs" role="tablist" aria-label="Part side">
-          <button type="button" role="tab" aria-selected="true" data-side="front" class="measurement-tab mono is-active">front</button>
-          <button type="button" role="tab" aria-selected="false" data-side="back" class="measurement-tab mono">back</button>
-        </div>
-        <p class="measurement-method mono" data-method-label>method: hough_circles</p>
-        <div class="measurement-img-wrap viewfinder" data-measure-img>
-          <Picture slug="measure-front" alt="Part with dimensional annotations" loading="lazy" inspectable label="Cls_Obj_Front_Side" confidence={99.15} class="measurement-img measure-front" />
-          <Picture slug="measure-back" alt="Back side measurement" loading="lazy" inspectable label="Cls_Obj_Back_Side" confidence={99.15} class="measurement-img measure-back" hidden />
-          <svg class="measurement-dims" viewBox="0 0 100 100" aria-hidden="true">
-            {frontDims.map((d) => (
-              <g class="dim-mark" data-dim={d.id}>
-                <line x1={d.x} y1={d.y} x2={d.x + 10} y2={d.y + 5} stroke="var(--text-muted)" stroke-width="0.3"/>
-                <text x={d.x + 2} y={d.y - 2} font-size="3" fill="var(--text-secondary)" font-family="monospace">{d.label}</text>
-              </g>
-            ))}
-          </svg>
-        </div>
-      </div>
-
-      <div class="measurement-gauges" data-reveal-group>
-        {frontDims.map((d) => (
-          <button type="button" class="gauge" data-dim={d.id} data-value={d.value} data-ref={d.ref} data-tol={d.tol}
-            aria-label={`${d.label}: measured ${d.value} mm, reference ${d.ref} mm, tolerance ±${d.tol} mm, pass`}>
-            <span class="gauge__name mono">{d.label}</span>
-            <div class="gauge__track">
-              <div class="gauge__band"></div>
-              <div class="gauge__needle" data-gauge-needle></div>
-            </div>
-            <span class="gauge__vals mono">
-              <span data-counter={d.value} data-decimals="2">{d.value}</span> mm
-              <span class="gauge__ref">({d.ref} ±{d.tol})</span>
-              <span class="gauge__pass">PASS ✓</span>
-            </span>
-          </button>
-        ))}
-      </div>
+    <div class="measurement-tabs" role="tablist" aria-label="Part side" data-reveal>
+      {panels.map((p, i) => (
+        <button
+          type="button"
+          role="tab"
+          id={`measure-tab-${p.side}`}
+          aria-selected={i === 0 ? 'true' : 'false'}
+          aria-controls={`measure-panel-${p.side}`}
+          tabindex={i === 0 ? 0 : -1}
+          data-side={p.side}
+          class:list={['measurement-tab', 'mono', { 'is-active': i === 0 }]}
+        >{p.side}</button>
+      ))}
+      <span class="measurement-tabs__meta mono" aria-hidden="true">units: mm</span>
     </div>
+
+    {panels.map((p, i) => (
+      <div
+        class:list={['measurement-panel', { 'is-active': i === 0 }]}
+        id={`measure-panel-${p.side}`}
+        role="tabpanel"
+        aria-labelledby={`measure-tab-${p.side}`}
+        data-panel={p.side}
+      >
+        <div class="measurement-visual" data-reveal>
+          <div class="measurement-img-wrap viewfinder">
+            <Picture
+              slug={p.slug}
+              alt={`${p.side === 'front' ? 'Front' : 'Back'} side of the machined part, photographed in the inspection chamber`}
+              loading="lazy"
+              sizes="(max-width: 900px) 92vw, 46vw"
+              inspectable
+              label={p.detectionLabel}
+              confidence={p.objectConfidence}
+              class="measurement-img"
+            />
+            <svg
+              class="measurement-dims"
+              viewBox={p.viewBox}
+              role="group"
+              aria-label={`Dimensional annotations, ${p.side} side`}
+            >
+              {p.dims.map((d) => (
+                <g
+                  class="dim"
+                  data-dim={d.id}
+                  role="button"
+                  tabindex="0"
+                  aria-label={`${d.label}: ${d.text.replace('⌀ ', '')} mm — highlight matching gauge`}
+                >
+                  {d.circle && <circle class="dim__circle" {...d.circle} />}
+                  {d.ext.map((s) => <line class="dim__ext" {...s} />)}
+                  {d.line && <line class="dim__line" {...d.line} />}
+                  {d.leader && <line class="dim__line" {...d.leader} />}
+                  {d.shelf && <line class="dim__line" {...d.shelf} />}
+                  {d.ticks.map((s) => <line class="dim__tick" {...s} />)}
+                  <line class="dim__hit" {...d.hit} />
+                  <text
+                    class="dim__label"
+                    x={d.at.x}
+                    y={d.at.y}
+                    text-anchor={d.anchor ?? 'middle'}
+                    transform={d.rotate ? `rotate(${d.rotate} ${d.at.x} ${d.at.y})` : undefined}
+                  >{d.text}</text>
+                </g>
+              ))}
+            </svg>
+          </div>
+          <p class="measurement-meta mono">
+            <span>method: {p.method}</span>
+            <span>rotation: {p.measured.angle.toFixed(1)}°</span>
+            <span>scale: {p.scale} px/mm</span>
+          </p>
+        </div>
+
+        <div class="measurement-gauges" data-reveal>
+          {p.gauges.map((g) => (
+            <button
+              type="button"
+              class:list={['gauge', { 'is-fail': !g.pass }]}
+              data-dim={g.id}
+              aria-pressed="false"
+              aria-label={`${g.label}: measured ${fmt(g.value)} millimeters, nominal ${fmt(g.ref)} plus minus ${fmt(TOLERANCE)}, deviation ${signed(g.dev)}, ${g.budget} percent of tolerance, ${g.pass ? 'pass' : 'fail'}. Activate to highlight this dimension on the part.`}
+            >
+              <span class="gauge__head">
+                <span class="gauge__name mono">{g.label}</span>
+                <span class="gauge__verdict mono">
+                  {g.pass ? 'PASS' : 'FAIL'}
+                  <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+                    {g.pass
+                      ? <path d="M2 6.5 L4.8 9.2 L10 3.4" />
+                      : <path d="M3 3 L9 9 M9 3 L3 9" />}
+                  </svg>
+                </span>
+              </span>
+              <span class="gauge__track">
+                <span class="gauge__band" style={`left:${BAND_INSET}%;right:${BAND_INSET}%`}></span>
+                <span class="gauge__nominal"></span>
+                <span class="gauge__needle" data-gauge-needle style={`left:${g.pct}%`}></span>
+              </span>
+              <span class="gauge__vals mono">
+                <span class="gauge__val" data-counter={g.value} data-decimals="2">{fmt(g.value)}</span>
+                <span class="gauge__delta">Δ {signed(g.dev)}</span>
+                <span class="gauge__ref">nom {fmt(g.ref)} ±{fmt(TOLERANCE)}</span>
+              </span>
+              <span class="gauge__budget mono">
+                <span class="gauge__budget-bar" style={`width:${Math.min(100, g.budget)}%`}></span>
+                {g.budget}% of tolerance
+              </span>
+            </button>
+          ))}
+          <p class="measurement-result mono">
+            {p.allPass
+              ? `result: PASS — all dimensions within ±${fmt(TOLERANCE)} mm`
+              : `result: FAIL — dimension outside ±${fmt(TOLERANCE)} mm`}
+          </p>
+        </div>
+      </div>
+    ))}
   </div>
 </section>
 
@@ -63,24 +182,109 @@ const frontDims = [
 
 <style>
   .measurement { background: var(--bg-primary); }
+  .measurement__head { max-width: 56ch; margin-bottom: var(--space-7); }
   .measurement h2 { margin-bottom: var(--space-4); }
-  .measurement__lead { margin-bottom: var(--space-8); color: var(--text-secondary); }
-  .measurement-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: var(--space-8); align-items: start; }
-  .measurement-tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-3); }
-  .measurement-tab { background: var(--bg-surface); border: 1px solid var(--border); padding: var(--space-2) var(--space-4); font-size: 11px; text-transform: uppercase; cursor: pointer; border-radius: var(--radius-sm); }
-  .measurement-tab.is-active { border-color: var(--accent); color: var(--accent); }
-  .measurement-method { font-size: 11px; color: var(--text-muted); margin-bottom: var(--space-4); }
+  .measurement__lead { color: var(--text-secondary); }
+  .measurement__lead em { color: var(--text-primary); font-style: normal; }
+
+  /* ── Tabs ─────────────────────────────────────────────────────────────── */
+  .measurement-tabs { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-5); }
+  .measurement-tab {
+    background: transparent; border: 1px solid var(--border); color: var(--text-secondary);
+    padding: var(--space-2) var(--space-4); font-size: var(--fs-mono-sm); text-transform: uppercase;
+    letter-spacing: 0.08em; cursor: pointer; border-radius: var(--radius-sm);
+    transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+  }
+  .measurement-tab:hover { color: var(--text-primary); border-color: var(--border-hover); }
+  .measurement-tab.is-active { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+  .measurement-tabs__meta { margin-left: auto; font-size: var(--fs-mono-sm); color: var(--text-muted); }
+
+  /* Neaktivní panel je display:none, tedy i mimo tab order — jinak by kóty
+     a gauges skryté strany zůstaly fokusovatelné. */
+  .measurement-panel { display: none; grid-template-columns: 1.05fr 0.95fr; gap: var(--space-8); align-items: start; }
+  .measurement-panel.is-active { display: grid; }
+
+  /* ── Snímek s kótami ──────────────────────────────────────────────────── */
   .measurement-img-wrap { position: relative; }
-  .measurement-dims { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-  .dim-mark.is-active line, .dim-mark.is-active text { stroke: var(--accent); fill: var(--accent); filter: drop-shadow(0 0 4px var(--accent-glow)); }
-  .gauge { display: block; width: 100%; text-align: left; background: var(--bg-surface); border: 1px solid var(--border); padding: var(--space-4); margin-bottom: var(--space-4); cursor: pointer; border-radius: var(--radius-sm); }
-  .gauge__name { font-size: 11px; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: var(--space-2); }
-  .gauge__track { height: 8px; background: var(--bg-elevated); position: relative; margin-bottom: var(--space-2); border-radius: var(--radius-sm); }
-  .gauge__band { position: absolute; inset: 0 20%; background: var(--ok-glow); border: 1px solid var(--ok); border-radius: var(--radius-sm); }
-  .gauge__needle { position: absolute; top: -4px; width: 3px; height: 16px; background: var(--text-primary); left: 0; transform: translateX(-50%); }
-  .gauge__vals { font-size: var(--fs-mono-sm); color: var(--text-primary); }
-  .gauge__ref { color: var(--text-muted); margin-left: var(--space-2); }
-  .gauge__pass { color: var(--ok); margin-left: var(--space-3); }
-  .gauge.is-active { border-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow); }
-  @media (max-width: 900px) { .measurement-grid { grid-template-columns: 1fr; } }
+  .measurement-dims { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+
+  .dim { pointer-events: none; }
+  .dim__hit { stroke: transparent; stroke-width: 34; pointer-events: stroke; cursor: pointer; }
+  .dim__ext, .dim__line, .dim__tick, .dim__circle {
+    fill: none; stroke: var(--text-primary); stroke-width: 2.2; opacity: 0.62;
+    transition: stroke var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+  }
+  .dim__ext { stroke-width: 1.6; opacity: 0.4; stroke-dasharray: 10 8; }
+  .dim__label {
+    font-family: var(--font-mono); font-size: 24px; font-variant-numeric: tabular-nums;
+    fill: var(--text-primary); opacity: 0.85; dominant-baseline: middle;
+    /* Halo místo podkladové plošky — drží čitelnost i nad kovem a jde s rotací. */
+    stroke: var(--bg-deep); stroke-width: 6; paint-order: stroke fill;
+    transition: fill var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+  }
+  .dim.is-active .dim__ext,
+  .dim.is-active .dim__line,
+  .dim.is-active .dim__tick,
+  .dim.is-active .dim__circle { stroke: var(--accent-light); opacity: 1; }
+  .dim.is-active .dim__label { fill: var(--accent-light); opacity: 1; }
+  .dim.is-active .dim__line { filter: drop-shadow(0 0 6px var(--accent)); }
+  .dim:focus-visible { outline: none; }
+  .dim:focus-visible .dim__line { stroke: var(--accent-light); stroke-width: 3.2; opacity: 1; }
+
+  .measurement-meta {
+    display: flex; flex-wrap: wrap; gap: var(--space-4); margin-top: var(--space-3);
+    font-size: var(--fs-mono-sm); color: var(--text-muted);
+  }
+
+  /* ── Gauges ───────────────────────────────────────────────────────────── */
+  .measurement-gauges { display: flex; flex-direction: column; gap: var(--space-3); }
+  .gauge {
+    display: block; width: 100%; text-align: left; background: var(--glass);
+    border: 1px solid var(--border); padding: var(--space-4); cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+  }
+  .gauge:hover { border-color: var(--border-hover); }
+  .gauge__head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: var(--space-3); }
+  .gauge__name { font-size: var(--fs-mono-sm); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.1em; }
+  .gauge__verdict { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-mono-sm); color: var(--ok); letter-spacing: 0.08em; }
+  .gauge__verdict svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+  .gauge.is-fail .gauge__verdict { color: var(--nok); }
+
+  .gauge__track { display: block; position: relative; height: 10px; background: var(--bg-elevated); border: 1px solid var(--border); }
+  .gauge__band { position: absolute; top: 0; bottom: 0; background: var(--ok-glow); border-inline: 1px solid var(--ok); }
+  .gauge.is-fail .gauge__band { background: var(--nok-glow); border-color: var(--nok); }
+  /* Nominál — ryska ve středu dráhy, proti které se odchylka čte. */
+  .gauge__nominal { position: absolute; top: -3px; bottom: -3px; left: 50%; width: 1px; background: var(--text-muted); }
+  .gauge__needle {
+    position: absolute; top: -5px; width: 2px; height: 20px; background: var(--text-primary);
+    transform: translateX(-50%); box-shadow: 0 0 8px rgba(232, 232, 236, 0.35);
+  }
+
+  .gauge__vals { display: flex; align-items: baseline; gap: var(--space-3); margin-top: var(--space-4); flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+  .gauge__val { font-size: var(--fs-mono-md); color: var(--text-primary); }
+  .gauge__val::after { content: ' mm'; color: var(--text-muted); font-size: var(--fs-mono-sm); }
+  .gauge__delta { font-size: var(--fs-mono-sm); color: var(--text-secondary); }
+  .gauge__ref { margin-left: auto; font-size: var(--fs-mono-sm); color: var(--text-muted); }
+
+  .gauge__budget { position: relative; display: block; margin-top: var(--space-2); font-size: var(--fs-mono-sm); color: var(--text-muted); padding-top: var(--space-2); }
+  .gauge__budget-bar { position: absolute; top: 0; left: 0; height: 1px; background: var(--text-muted); }
+
+  .gauge.is-active { border-color: var(--accent); background: var(--accent-glow); box-shadow: 0 0 24px var(--accent-glow); }
+  .gauge.is-active .gauge__name { color: var(--accent-light); }
+  .gauge.is-active .gauge__budget-bar { background: var(--accent); }
+
+  .measurement-result { margin-top: var(--space-4); font-size: var(--fs-mono-sm); color: var(--text-secondary); }
+
+  @media (max-width: 900px) {
+    .measurement-panel.is-active { grid-template-columns: 1fr; gap: var(--space-6); }
+    /* Kóty se zmenšují s obrázkem, hodnota v mono ne — v user units ji zvětšíme,
+       aby zůstala nad hranou čitelnosti i na 360px. */
+    .dim__label { font-size: 34px; stroke-width: 8; }
+    .dim__ext, .dim__line, .dim__tick, .dim__circle { stroke-width: 3; }
+    .dim__ext { stroke-width: 2.2; }
+  }
+  @media (max-width: 520px) {
+    .gauge__ref { margin-left: 0; width: 100%; }
+  }
 </style>

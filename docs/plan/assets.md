@@ -1,7 +1,11 @@
 # Assety — inventura, mezery a degradované varianty
 
-> **Toto je nejvážnější riziko plánu v1.** Koncept počítá s ~80–120 obrazovými assety.
-> V repozitáři je jich **12**. Bez doplnění se 4 z 11 interaktivních prvků musí degradovat.
+> Stav k datu vytvoření plánu (2026-08-04): koncept počítal s ~80–120 obrazovými assety,
+> v repozitáři bylo jich 12, 4 z 11 interaktivních prvků musely degradovat. **K 2026-08-07
+> je to vyřešené** — GAN sada, GUI snímky, párové snímky defektu i compositing vrstvy jsou
+> dodané a nasazené (viz §3). Jediná zbývající mezera jsou avatary contributorů a loga
+> institucí (§2.6). Sekce 1–2 níže jsou dobové záznamy z doby vzniku plánu — ponechány pro
+> kontext rozhodnutí, aktuální stav je v §3.
 
 Stav k datu vytvoření plánu: **2026-08-04**.
 
@@ -19,8 +23,8 @@ Stav k datu vytvoření plánu: **2026-08-04**.
 | `context_images/scheme_3.png` | 412 KB | schéma pipeline / GAN architektura | A5 |
 | `context_images/pbr.png` | 163 KB | PBR render vs. raw geometry | A4 |
 | `context_images/GAN_output.png` | 326 KB | GAN výstup (pravděpodobně grid) | A5, A7 |
-| `context_images/measurement.png` | 537 KB | díl s kótami — front side | A8 |
-| `context_images/measurement_back.png` | 520 KB | díl s kótami — back side | A8 |
+| `context_images/measurement.png` | 537 KB | ⚠️ **NENÍ díl s kótami** — screenshot celého GUI (1009×634, světlé pozadí, díl ~15 % plochy). Použitelné jen jako **zdroj naměřených hodnot z loggeru** (front side). | — (nepoužito jako obraz) |
+| `context_images/measurement_back.png` | 520 KB | ⚠️ totéž pro back side; z loggeru odečtena reálná back sada 61.65 / 40.78 / 6.09 / 25.23 | — (nepoužito jako obraz) |
 | `context_images/industry.png` | 2.0 MB | industriální kontext / factory floor | A3 |
 | `context_images/Image_5.png` | 4.5 MB | ⚠️ **NENÍ foto dílu** — screenshot celého GUI (3838×2158, světlé pozadí). Nepoužitelné jako hero. | — (nepoužito) |
 | `Synth.Eye - html/Image_004.png` | 3.9 MB | **jediné reálné foto dílu** (1920×1200, tmavé pozadí, díl odsazený doprava) | A1 (hero, centrovaný crop) / A2 / A3 / A4 |
@@ -66,39 +70,38 @@ podle vzdálenosti):
 | `Cls_Defect_Fingerprint` #1 (vlevo od horního otvoru) | `22.1,18.1,20.2,30.8` | 16 848 px |
 | `Cls_Defect_Fingerprint` #2 (vpravo, rozstřelené) | `55.9,25.2,13.3,19.8` | 3 380 px |
 
-Tytéž nálezy přepočítané do necropnutého `part-front` (1920×1200) pro Defect Revealer:
+Tytéž nálezy přepočítané do necropnutého `part-front` (1920×1200):
 objekt `59.6,27.9,22.2,53.4`, defekty `60.3,29.1,7.7,23.3;73.1,34.4,5.1,15.0`.
-- **A4 Defect Revealer** — ⏳ stále běží na CSS overlayi nad `part-front`; výměna za reálný pár
-  je záměna dvou `slug` hodnot v `PipelineBlender.astro` + smazání `.revealer__defect-overlay`.
+- **Update 2026-08-06:** samostatný „Defect Revealer" prvek s CSS overlayem, na který se
+  tento bod původně vztahoval, zanikl v redesignu `PipelineBlender.astro` (viz
+  [blender-redesign-2026-08-06.md](blender-redesign-2026-08-06.md)) — nahradil ho žebřík
+  4 příček. Reálný pár `part-clean`/`part-defected` je nasazen v **A3 Data Gap**
+  (`DataGap.astro`), ne v Blender sekci. Tento bod je tím vyřešený, jen jinde než plán
+  původně čekal.
 - **Hero** — otevřený bod z §1.1 lze zavřít: `part-hero` může jít z `part_clean.png`
   (centrovaný crop), takže hero přestane ukazovat defektní díl.
 
-### 2.2 Snímky pro GUI Demo (A2) — ⚠️ 1 z 6–8
+### 2.2 Snímky pro GUI Demo (A2) — ✅ DODÁNO 2026-08-07
 
-**Potřeba:** 6–8 snímků, mix OK / NOK, ke každému předdefinovaný výsledek, bounding boxy,
-confidence score a sada log zpráv.
+**Dodáno:** 15 reálných snímků z `.claude/context/gui_demo/Image_*.png` (reálná inspekční
+sada, ne odvozené crops z `Image_004.png`) — `insp-back-01–05` (OK), `insp-front-01–05`
+(OK), `insp-defect-01–05` (NOK). Registrace v `build-assets.mjs`, data v
+`src/scripts/data/gui-demo-frames.js` (15 objektů, beze změny logiky oproti původnímu
+3položkovému arrayi — přesně podle plánu níže). `gui-demo.js` přepsán na bohatší
+CAPTURE/ANALYZE/MEASURE/CLEAR flow se SVG kótami a vykreslovaným grafem.
 
-**Degradace:**
-- Postav sekvenci nad **3 stavy** derivovanými z `Image_004.png`:
-  `frame-01` (OK, front side), `frame-02` (NOK, fingerprint — s CSS overlayem jako 2.1),
-  `frame-03` (OK, back side — použij `measurement_back.png` crop).
-- Data drž **kompletně odděleně** v `src/scripts/data/gui-demo-frames.js` jako array objektů
-  — doplnění dalších 5 snímků pak znamená přidat 5 položek do arraye, nula změn v logice.
-- Bounding boxy a confidence hodnoty vezmi z reálných log zpráv v `synth_eye_gui_template.html`
-  (`93.15 %`, `92.93 %`, `99.86 %`) — ne vymyšlená čísla.
+Původní požadavek (6–8 snímků) je tím překonán — sada má 15 a je plně reálná, žádná
+degradace nezůstává.
 
-### 2.3 Compositing vrstvy (A6) — ❌ CHYBÍ
+### 2.3 Compositing vrstvy (A6) — ✅ DODÁNO 2026-08-07
 
-**Potřeba:** 5 separátních PNG s alfou: `0-background` (zelené pozadí), `1-front-gan`,
-`2-fingerprint-gan`, `3-blending`, `4-final-composite` + YOLO label overlay.
-
-**Degradace:**
-- Vrstvu 0 vygeneruj jako **CSS** (zelené camera background, `#1a3a1f` range).
-- Vrstvy 1 a 2 nahraď cropy z `GAN_output.png`.
-- Vrstvu 3 (alpha blending + pressure simulation) reprezentuj jako **procedurální vrstvu** —
-  semi-transparentní SVG s radiálním gradientem a `mix-blend-mode: overlay`.
-- Vrstvu 4 jako vrstvu 1 + SVG bounding box overlay s monospace labelem.
-- Drag/z-index/spring fyzika je na assetech nezávislá → plná funkčnost i v degradovaném stavu.
+**Dodáno:** 4 reálné `lane-a-*` assety z `.claude/context/context_images/lane-a/`
+(`background.png` → `lane-a-bg`, `fingerprint-raw.png` → `lane-a-print` přes nový
+`negate` krok v `build-assets.mjs`, `fingerprint-alpha.png` → `lane-a-alpha` přes
+`alphaKey`, `composite.png` → `lane-a-composite`, hotový výstup compositoru seed 0050).
+`CompositingDeck.astro` celý přepsán, žádná CSS zeleň ani procedurální SVG blend —
+labely vycházejí z reálně naměřených plates. `compositing-deck.js` nový interakční
+model (scrub, drag, label sync) + a11y/reduced-motion handling.
 
 ### 2.4 GAN výstupy pro Latent Space Navigator (A5) — ✅ DOPLNĚNO (80 reálných snímků)
 
@@ -137,19 +140,72 @@ Vytvoří A13 kompozicí: `Image_004.png` + logo + claim „Train on synthetic. 
 na `--bg-deep` pozadí, 1200×630.
 
 ---
+### 2.8 Measurement (A8) — ✅ VYŘEŠENO 2026-08-10, bez nové dodávky
+
+**Problém:** `measure-front` / `measure-back` se generovaly z `measurement.png` /
+`measurement_back.png`, tedy ze **screenshotů celé PyQt aplikace ve světlém theme** — ne
+z fotek dílu. Do tmavé sekce tím šel světlý panel s loggerem a grafem, díl v něm zabíral
+~15 % plochy v levé horní čtvrtině a SVG kóty (hardcoded na x 15/75/35/55) padaly na text
+loggeru, ne na díl. Týž případ jako `Image_5.png` u hera (§1, řádek „NENÍ foto dílu").
+
+**Řešení bez nové dodávky:** sekce sedí na snímcích, které už v repu jsou —
+`gui_demo/Image_189.png` (front, díl téměř osově zarovnaný, zahloubené díry) a
+`gui_demo/Image_001.png` (back, naklopený ~22°, průchozí díra bez zahloubení). Cropy
+`270,23 784×980` a `629,0 832×1040` (4:5 u obou, aby přepnutí strany nepřelilo layout) drží
+`src/scripts/data/measure-sides.js` a sdílí je `build-assets.mjs` (extract) i `viewBox`
+SVG overlaye — kóty jsou v nativních souřadnicích kádru 1920×1200, takže se crop a kóty
+nemohou rozejít.
+
+**Reálná back-side data** (otevřená otázka #4 v progress.md) se našla v loggeru na
+`measurement_back.png`: `[16:21:37] … on back side` → 61.65 / 40.78 / 6.09 / 25.23 mm,
+rotation 90.3°. Nic se nedopočítávalo.
+
+**Volitelný upgrade (ne blocker):** makro snímek dílu z bližší vzdálenosti — na kótování je
+ostrá hrana z blízka vždycky lepší než digitální crop z 1920×1200.
+
+---
+### 2.9 Results (A9) — ✅ VYŘEŠENO 2026-08-10, bez nové dodávky
+
+**Problém:** evidence grid zůstal na assetech z první vlny, i když sada, kterou potřeboval,
+vznikla mezitím. Šest dlaždic obsahovalo: dvakrát týž 3-up list se zapečeným titulkem
+„Example outputs:" (`object-position` na něm neměl efekt, protože `.picture-img` má
+`height: auto; object-fit: contain`), export slidu `pbr-render`, `part-front` s dílem na
+~10 % plochy **a s defektem, přesto označený `OK 99.15 %`**, a dva screenshoty celého
+PyQt GUI (`measure-front`/`measure-back` — týž případ jako §2.8). Sekce, která má dokazovat
+věrohodnost, tak byla jediné místo webu, kde web sám nemluvil pravdu.
+
+**Řešení bez nové dodávky:** matice 3×2 na assetech, které už v repu jsou —
+`gan-front` / `gan-composite` / `gan-back` (340² cropy z GAN redesignu 08-06, bez titulku)
+proti třem novým 800² cropům reálných snímků z komory:
+
+| Slug | Zdroj | Crop (v 1920×1200) |
+|---|---|---|
+| `evid-front` | `gui_demo/Image_174.png` (= `insp-front-01`) | `418,20 800×800` |
+| `evid-defect` | `gui_demo/Image_131.png` (= `insp-defect-01`) | `467,112 800×800` |
+| `evid-back` | `gui_demo/Image_001.png` (= `insp-back-01`) | `645,103 800×800` |
+
+Strana 800 srovnává měřítko obou řad (díl plní 79–87 % výšky kádru, v GAN cropech 86–87 %);
+cropy jsou centrované na bbox dílu odečtený z `outline` v `gui-demo-frames.js`. Kdo mění
+crop, musí přepočítat i bounding boxy v `Results.astro` — jsou to tytéž souřadnice minus
+offset cropu, děleno 800. Detaily v progress.md, log „A9-r1".
+
+**Vedlejší efekt:** `gan-output`, `pbr-render` a `part-front` už nedrží žádná komponenta —
+viz otevřený bod 6 v progress.md.
+
 
 ## 3. Shrnutí pro rozhodnutí
 
-| Prvek | Bez nových assetů | S assety |
+| Prvek | Stav k 2026-08-04 | Stav k 2026-08-07 |
 |---|---|---|
-| Defect Revealer | ✅ funkční, syntetický defekt overlay | ✅ pár dodán 2026-08-05, výměna čeká |
-| GUI Demo | ⚠️ 3 snímky místo 6–8 | ✅ plná sekvence |
-| Compositing Deconstructor | ⚠️ 5 vrstev, 2 procedurální | ✅ reálné vrstvy z pipeline |
-| Latent Navigator | ❌ 1D slider nebo 4×4 grid | ✅ plný 2D navigátor |
+| Defect Revealer (→ nahrazeno A3 Data Gap) | ✅ funkční, syntetický defekt overlay | ✅ reálný pár `part-clean`/`part-defected` — v `DataGap.astro`, ne v samostatném revealeru (ten zanikl v redesignu 08-06) |
+| GUI Demo | ⚠️ 3 snímky místo 6–8 | ✅ 15 reálných snímků |
+| Compositing Deconstructor | ⚠️ 5 vrstev, 2 procedurální | ✅ reálné vrstvy z pipeline, přesný compositor run |
+| Latent Navigator | ❌ 1D slider nebo 4×4 grid | ✅ plný 2D navigátor (80 GAN výstupů) |
 | Particle Transition | ✅ použitelné | ✅ |
-| Team avatary | ⚠️ iniciály | ✅ |
+| Measurement (A8) | ⚠️ screenshot GUI místo dílu (neodhaleno) | ✅ 08-10 makro cropy `gui_demo/Image_189` + `Image_001`, kóty z naměřené geometrie (§2.8) |
+| Results (A9) | ⚠️ 2× týž list, export slidu, 2× screenshot GUI (neodhaleno) | ✅ 08-10 matice 3×2: GAN cropy vs. nové `evid-*` cropy reálných snímků, boxy naměřené (§2.9) |
+| Team avatary | ⚠️ iniciály | ⚠️ iniciály — stále nedodáno, jediná otevřená položka |
 
-**Doporučení:** stavět v1 na degradovaných variantách — všechny mají identické API pro pozdější
-výměnu assetu. Neblokovat development čekáním na assety. Prioritní dodávka od zadavatele
-(podle dopadu): **(1) GAN sada pro navigátor · (2) 6–8 GUI snímků · (3) párové snímky defektu ·
-(4) compositing vrstvy · (5) avataři + loga**.
+**Zbývá jediná otevřená dodávka:** avatary contributorů (Roman Parak, Lukas Moravansky,
+Filip Rusnak) + loga INTEMAC a JIC (§2.6). Všechny ostatní degradace z tohoto dokumentu
+jsou k 2026-08-07 vyřešené reálnými assety.

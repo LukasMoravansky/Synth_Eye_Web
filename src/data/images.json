@@ -295,15 +295,15 @@
   },
   "measure-front": {
     "slug": "measure-front",
-    "width": 1009,
-    "height": 634,
-    "aspect": 1.5915
+    "width": 784,
+    "height": 980,
+    "aspect": 0.8
   },
   "measure-back": {
     "slug": "measure-back",
-    "width": 1007,
-    "height": 628,
-    "aspect": 1.6035
+    "width": 800,
+    "height": 1000,
+    "aspect": 0.8
   },
   "industry": {
     "slug": "industry",
@@ -406,5 +406,23 @@
     "width": 1400,
     "height": 875,
     "aspect": 1.6
+  },
+  "evid-front": {
+    "slug": "evid-front",
+    "width": 800,
+    "height": 800,
+    "aspect": 1
+  },
+  "evid-defect": {
+    "slug": "evid-defect",
+    "width": 800,
+    "height": 800,
+    "aspect": 1
+  },
+  "evid-back": {
+    "slug": "evid-back",
+    "width": 800,
+    "height": 800,
+    "aspect": 1
   }
 }

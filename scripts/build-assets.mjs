@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
+import { MEASURE_CROPS } from '../src/scripts/data/measure-sides.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const CONTEXT = path.join(ROOT, '.claude', 'context');
@@ -354,8 +355,24 @@ const ASSETS = [
   // boxem, který tvrdil 6000 / >99 / >95 — čísla, co web už drží nativně
   // v Results.astro. Redesign sekce ho nahradil triptychem generátorů z reálných
   // GAN výstupů (public/images/latent/*), takže záznam odešel.
-  { src: path.join(CONTEXT, 'context_images', 'measurement.png'), slug: 'measure-front', max: 1600 },
-  { src: path.join(CONTEXT, 'context_images', 'measurement_back.png'), slug: 'measure-back', max: 1600 },
+  // ── Measurement — makro cropy reálných snímků z komory ───────────────────
+  // measurement.png / measurement_back.png tu byly do 08-10 registrované jako
+  // „díl s kótami". Nejsou to fotky dílu: jsou to screenshoty CELÉ PyQt aplikace
+  // ve světlém theme (Camera View + logger + graf, 1009×634). Do tmavé sekce tedy
+  // šel světlý panel a SVG kóty padaly na text loggeru, ne na díl — týž případ,
+  // jako když hero bralo Image_5.png.
+  //
+  // Zdroj i crop drží src/scripts/data/measure-sides.js, odkud si totožná čísla
+  // bere viewBox SVG overlaye v Measurement.astro. Kóty jsou odečtené v nativním
+  // kádru 1920×1200 a viewBox = crop okno, takže se crop a kóty nemohou rozejít
+  // — proto se crop NESMÍ přepisovat tady.
+  // max 1000 = nativní výška cropu (784×980 / 832×1040), tedy bez zvětšování.
+  ...MEASURE_CROPS.map(({ slug, source, crop }) => ({
+    src: path.join(CONTEXT, 'gui_demo', `${source}.png`),
+    slug,
+    max: 1000,
+    crop,
+  })),
   { src: path.join(CONTEXT, 'context_images', 'industry.png'), slug: 'industry', max: 1600 },
   { src: path.join(CONTEXT, 'context_images', 'Logo_white.png'), slug: 'logo-white', max: 800 },
   // ── GUI Demo — 15 reálných snímků z inspekční komory ─────────────────────
@@ -377,6 +394,36 @@ const ASSETS = [
     slug,
     max: 1400,
   })),
+  // ── Results — evidence matice, reálná řada ───────────────────────────────
+  // Tytéž tři snímky z inspekční komory (Image_174 / Image_131 / Image_001,
+  // tedy insp-front-01 / insp-defect-01 / insp-back-01), ale KVADRATICKY
+  // přiříznuté. Results je staví do matice 3×2 proti kvadratickým GAN výstupům
+  // (gan-front/composite/back, nativně 340²) — v nativním kádru 1920×1200 by
+  // díl zabíral ~11 % plochy a řady by měly nesouměřitelnou výšku.
+  //
+  // Crop 800² je pro všechny tři stejný ROZMĚREM, ne pozicí: středy se liší,
+  // protože díl leží v každém snímku jinde a jinak zrotovaný.
+  //
+  // Geometrie je odečtená z `outline` ve src/scripts/data/gui-demo-frames.js
+  // (bbox = min/max čtyř rohů v nativním kádru), NE odhadem:
+  //   insp-front-01   x 468→1168  y 105→735   center 818.0,420.0   (700×630)
+  //   insp-defect-01  x 555→1178  y 168→855   center 866.5,511.5   (623×687)
+  //   insp-back-01    x 752→1338  y 155→850   center 1045.0,502.5  (586×695)
+  //
+  // Strana 800 není zvolená kulatostí: v GAN cropech plní díl 86–87 % výšky
+  // kádru, a 800 je nejmenší strana, při které díl vyplní 79–87 % i tady
+  // (630/800, 687/800, 695/800) a přitom se do kádru vejde bez clampu —
+  // se první odhad 900 dával 70–77 %, takže syntetická řada vypadala v matici
+  // o pár procent „blíž" a dvojice se nečetla jako týž díl ve dvou původech.
+  // Všechny tři cropy vycházejí přesně na střed naměřeného bboxu (okraje
+  // 50/50, 88/89, 107/107 px), takže díl leží ve všech dlaždicích na stejném
+  // místě rámu.
+  //
+  // Bounding boxy v Results.astro jsou tytéž souřadnice minus offset cropu,
+  // vydělené 800. Kdo mění crop, MUSÍ přepočítat i je.
+  { src: path.join(CONTEXT, 'gui_demo', 'Image_174.png'), slug: 'evid-front', max: 800, crop: { left: 418, top: 20, width: 800, height: 800 } },
+  { src: path.join(CONTEXT, 'gui_demo', 'Image_131.png'), slug: 'evid-defect', max: 800, crop: { left: 467, top: 112, width: 800, height: 800 } },
+  { src: path.join(CONTEXT, 'gui_demo', 'Image_001.png'), slug: 'evid-back', max: 800, crop: { left: 645, top: 103, width: 800, height: 800 } },
 ];
 
 const SVG_COPY = {

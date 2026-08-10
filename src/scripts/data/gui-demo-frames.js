@@ -18,6 +18,16 @@
  * Naměřené hodnoty leží všechny uvnitř tolerance ±3 mm proti nominálu
  * (60 × 40 mm, ⌀ 6 mm, rozteč 25 mm), takže measurement vždy skončí PASS —
  * verdikt OK/NOK nese výhradně detekce defektu, ne metrologie.
+ *
+ * Dva framy nesou hodnoty odečtené z reálných běhů aplikace (logger na
+ * .claude/context/context_images/measurement*.png) a slouží zároveň sekci
+ * Measurement, která si je bere odsud přes measure-sides.js:
+ *   front-03  62.08 / 41.02 / 6.10 / 25.20   `[16:18:54] … on front side`
+ *   back-01   61.65 / 40.78 / 6.09 / 25.23   `[16:21:37] … on back side`
+ * Kanonická front sada z konceptu (62.08 …) do 08-10 omylem sedla na back-01,
+ * takže back stranu popisovala front čísla a reálná back data ležela nepoužitá
+ * v loggeru na screenshotu. `angle` se NEPŘEROVNÁVAL — ten je odečtený z pózy
+ * dílu na konkrétním snímku, ne z běhu měření.
  */
 
 const NOMINAL = { height: 60.0, width: 40.0, holeDia: 6.0, holeDist: 25.0, tol: 3.0 };
@@ -30,7 +40,7 @@ export const frames = [
     outline: [[972, 155], [1338, 300], [1118, 850], [752, 700]],
     holes: [{ cx: 1045, cy: 363, r: 27 }, { cx: 952, cy: 592, r: 27 }],
     defects: [],
-    measured: { height: 62.08, width: 41.02, holeDia: 6.10, holeDist: 25.20, angle: 68.2 },
+    measured: { height: 61.65, width: 40.78, holeDia: 6.09, holeDist: 25.23, angle: 68.2 },
   },
   {
     id: 'back-02', slug: 'insp-back-02', side: 'back', verdict: 'OK',
@@ -88,7 +98,7 @@ export const frames = [
     outline: [[462, 218], [868, 222], [852, 808], [455, 805]],
     holes: [{ cx: 705, cy: 388, r: 33, ring: 57 }, { cx: 700, cy: 632, r: 33, ring: 57 }],
     defects: [],
-    measured: { height: 62.35, width: 41.24, holeDia: 6.29, holeDist: 25.31, angle: 89.3 },
+    measured: { height: 62.08, width: 41.02, holeDia: 6.10, holeDist: 25.20, angle: 89.3 },
   },
   {
     id: 'front-04', slug: 'insp-front-04', side: 'front', verdict: 'OK',
