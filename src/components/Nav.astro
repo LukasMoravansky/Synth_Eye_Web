@@ -38,8 +38,12 @@
     transition: background var(--dur-base) var(--ease-out), backdrop-filter var(--dur-base);
   }
   .nav--scrolled {
-    background: rgba(8, 8, 12, 0.72);
-    backdrop-filter: blur(12px);
+    /* Higher opacity + smaller blur radius than the original 12px: the nav
+       spans the full viewport width, so on 4K displays backdrop-filter has to
+       re-sample far more pixels every scroll frame. A stronger solid tint
+       keeps the frosted look readable with a much cheaper blur. */
+    background: rgba(8, 8, 12, 0.85);
+    backdrop-filter: blur(6px);
     border-bottom: 1px solid var(--border);
   }
   .nav__inner {
