@@ -1,4 +1,5 @@
 ---
+import { withBase } from '../lib/base.js';
 /* Compositing Deconstructor — lane A rozebraná na jednom reálném běhu.
  *
  * Předchozí verze skládala pět vrstev ze dvou různých seedů (gan-front /
@@ -157,9 +158,9 @@ const fmt = (v: number) => v.toFixed(6);
           <button type="button" class="plate plate--bg" data-plate="0" aria-label="Layer 00 — camera_background">
             <span class="plate__risers" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
             <picture>
-              <source type="image/avif" srcset="/images/lane-a-bg.avif" />
-              <source type="image/webp" srcset="/images/lane-a-bg.webp" />
-              <img src="/images/lane-a-bg.png" alt="" width="512" height="512" loading="lazy" decoding="async" />
+              <source type="image/avif" srcset={withBase('/images/lane-a-bg.avif')} />
+              <source type="image/webp" srcset={withBase('/images/lane-a-bg.webp')} />
+              <img src={withBase('/images/lane-a-bg.png')} alt="" width="512" height="512" loading="lazy" decoding="async" />
             </picture>
           </button>
 
@@ -170,9 +171,9 @@ const fmt = (v: number) => v.toFixed(6);
             <span class="plate__risers" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
             <span class="plate__patch plate__patch--free">
               <picture>
-                <source type="image/avif" srcset="/images/lane-a-print.avif" />
-                <source type="image/webp" srcset="/images/lane-a-print.webp" />
-                <img src="/images/lane-a-print.png" alt="" width="123" height="128" loading="lazy" decoding="async" />
+                <source type="image/avif" srcset={withBase('/images/lane-a-print.avif')} />
+                <source type="image/webp" srcset={withBase('/images/lane-a-print.webp')} />
+                <img src={withBase('/images/lane-a-print.png')} alt="" width="123" height="128" loading="lazy" decoding="async" />
               </picture>
             </span>
             <span class="plate__tick mono">128 × 128 · unplaced</span>
@@ -190,9 +191,9 @@ const fmt = (v: number) => v.toFixed(6);
               style={`left:${PASTE.left}%;top:${PASTE.top}%;width:${PASTE.width}%;height:${PASTE.height}%`}
             >
               <picture>
-                <source type="image/avif" srcset="/images/lane-a-alpha.avif" />
-                <source type="image/webp" srcset="/images/lane-a-alpha.webp" />
-                <img src="/images/lane-a-alpha.png" alt="" width="232" height="214" loading="lazy" decoding="async" />
+                <source type="image/avif" srcset={withBase('/images/lane-a-alpha.avif')} />
+                <source type="image/webp" srcset={withBase('/images/lane-a-alpha.webp')} />
+                <img src={withBase('/images/lane-a-alpha.png')} alt="" width="232" height="214" loading="lazy" decoding="async" />
               </picture>
               <span class="plate__rectTick mono">{PASTE.px}</span>
             </span>
@@ -203,9 +204,9 @@ const fmt = (v: number) => v.toFixed(6);
           <button type="button" class="plate plate--composite" data-plate="3" aria-label="Layer 03 — front.pkl carrier blended with the print">
             <span class="plate__risers" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
             <picture>
-              <source type="image/avif" srcset="/images/lane-a-composite.avif" />
-              <source type="image/webp" srcset="/images/lane-a-composite.webp" />
-              <img src="/images/lane-a-composite.png" alt="" width="512" height="512" loading="lazy" decoding="async" />
+              <source type="image/avif" srcset={withBase('/images/lane-a-composite.avif')} />
+              <source type="image/webp" srcset={withBase('/images/lane-a-composite.webp')} />
+              <img src={withBase('/images/lane-a-composite.png')} alt="" width="512" height="512" loading="lazy" decoding="async" />
             </picture>
           </button>
 

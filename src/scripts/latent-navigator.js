@@ -1,4 +1,5 @@
 import { gsap, isFinePointer, prefersReducedMotion } from './lib/motion.js';
+import { withBase } from '../lib/base.js';
 
 const COLS = 10;
 const ROWS = 8;
@@ -63,7 +64,7 @@ function seedFrom(x, y) {
 const cache = new Map();
 
 function cellUrl(c, r) {
-  return `/images/latent/${r}-${c}.webp`;
+  return withBase(`/images/latent/${r}-${c}.webp`);
 }
 
 function prefetch(url) {

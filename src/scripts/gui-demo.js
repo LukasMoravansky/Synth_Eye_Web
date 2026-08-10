@@ -1,5 +1,6 @@
 import { gsap, prefersReducedMotion } from './lib/motion.js';
 import { frames, FRAME_W, FRAME_H, NOMINAL } from './data/gui-demo-frames.js';
+import { withBase } from '../lib/base.js';
 
 const PAD = 14;
 
@@ -192,7 +193,7 @@ export default function init(root) {
   }
 
   function setImage(slug, alt) {
-    img.src = `/images/${slug}.webp`;
+    img.src = withBase(`/images/${slug}.webp`);
     img.alt = alt;
     img.hidden = false;
     if (streamReady) streamReady.hidden = true;

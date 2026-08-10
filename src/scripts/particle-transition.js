@@ -1,4 +1,5 @@
 import { ScrollTrigger, prefersReducedMotion } from './lib/motion.js';
+import { withBase } from '../lib/base.js';
 
 /**
  * Particle Field Transformation.
@@ -64,8 +65,8 @@ const ACC_R = 123;
 const ACC_G = 110;
 const ACC_B = 246;
 
-const SRC_IMAGE = '/images/transition-src.webp';
-const TGT_IMAGE = '/images/transition-gan.webp';
+const SRC_IMAGE = withBase('/images/transition-src.webp');
+const TGT_IMAGE = withBase('/images/transition-gan.webp');
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {

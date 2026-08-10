@@ -1,5 +1,6 @@
 ---
 /* Footer — team + institutions */
+import { withBase } from '../lib/base.js';
 const contributors = [
   { initials: 'RP', name: 'Roman Parak' },
   { initials: 'LM', name: 'Lukas Moravansky' },
@@ -10,7 +11,7 @@ const contributors = [
 <footer class="footer" id="footer">
   <div class="container footer__grid">
     <div class="footer__brand">
-      <img src="/images/logo.svg" alt="" width="100" height="28" />
+      <img src={withBase('/images/logo.svg')} alt="" width="100" height="28" />
       <p class="footer__claim">Train on synthetic. Deploy on real.</p>
       <p class="footer__copy mono">© 2026 Synth.Eye · MIT License</p>
     </div>

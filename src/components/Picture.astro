@@ -19,6 +19,7 @@
  */
 import images from '../data/images.json';
 import lqip from '../data/lqip.json';
+import { withBase } from '../lib/base.js';
 
 interface Props {
   slug: string;
@@ -73,10 +74,10 @@ const detections = [
   style={placeholder ? `background-image:url(${placeholder});background-size:cover` : undefined}
 >
   <picture>
-    <source type="image/avif" srcset={`/images/${slug}.avif`} />
-    <source type="image/webp" srcset={`/images/${slug}.webp`} />
+    <source type="image/avif" srcset={withBase(`/images/${slug}.avif`)} />
+    <source type="image/webp" srcset={withBase(`/images/${slug}.webp`)} />
     <img
-      src={`/images/${slug}.png`}
+      src={withBase(`/images/${slug}.png`)}
       alt={alt}
       width={width}
       height={height}

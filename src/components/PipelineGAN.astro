@@ -1,6 +1,7 @@
 ---
 import LatentNavigator from './LatentNavigator.astro';
 import CompositingDeck from './CompositingDeck.astro';
+import { withBase } from '../lib/base.js';
 
 /* Statistical learning: generative networks — druhá polovina Aktu II.
 
@@ -197,7 +198,7 @@ const TRADEOFF = [
                 {cells.map((cell) => (
                   <div class="gen__cell">
                     <img
-                      src={`/images/latent/${cell}.webp`}
+                      src={withBase(`/images/latent/${cell}.webp`)}
                       alt=""
                       width="256"
                       height="256"

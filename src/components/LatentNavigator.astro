@@ -1,4 +1,5 @@
 ---
+import { withBase } from '../lib/base.js';
 /* Sub-component — Latent Space Navigator (A5)
    Layout: viewer + latent field side-by-side ≥900px, stacked below.
    Viewer size is viewport-height aware so the whole block fits one screen. */
@@ -17,7 +18,7 @@
       <img
         class="latent-nav__img"
         data-latent-img
-        src="/images/latent/3-4.webp"
+        src={withBase('/images/latent/3-4.webp')}
         alt="GAN generated variation of the inspected part"
         width="256"
         height="256"

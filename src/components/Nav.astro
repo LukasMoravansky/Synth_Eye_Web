@@ -1,11 +1,12 @@
 ---
 /* Minimal fixed nav — A0 stub, styled for dark theme */
+import { withBase } from '../lib/base.js';
 ---
 
 <nav class="nav" id="site-nav" aria-label="Site navigation">
   <div class="nav__inner container">
     <a href="#hero" class="nav__logo" aria-label="Synth.Eye home">
-      <img src="/images/logo-light.svg" alt="" width="120" height="32" />
+      <img src={withBase('/images/logo-light.svg')} alt="" width="120" height="32" />
     </a>
     <div class="nav__links">
       <a href="https://github.com/rparak/Synth_Eye" target="_blank" rel="noopener noreferrer">

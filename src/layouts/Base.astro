@@ -1,8 +1,17 @@
 ---
-import '../styles/fonts.css';
 import '../styles/tokens.css';
 import '../styles/global.css';
 import { site } from '../data/site.js';
+import { fonts, UNICODE_RANGE } from '../data/fonts.js';
+import { BASE, withBase } from '../lib/base.js';
+
+const fontFaces = fonts
+  .map(
+    ({ family, file, weight }) => `@font-face{font-family:'${family}';src:url('${withBase(
+      `/fonts/${file}`,
+    )}') format('woff2');font-weight:${weight};font-style:normal;font-display:swap;unicode-range:${UNICODE_RANGE}}`,
+  )
+  .join('');
 
 interface Props {
   title?: string;
@@ -11,8 +20,12 @@ interface Props {
 
 const title = Astro.props.title ?? site.title;
 const description = Astro.props.description ?? site.description;
-const canonical = site.url;
-const ogImage = `${site.url}/og-image.png`;
+// Kanonická URL musí odpovídat tomu, kam se web reálně deployuje — Vercel do
+// rootu domény, GitHub Pages do /<repo>/. Obojí přijde z astro.config (site +
+// base), fallback je Vercel doména ze site.js.
+// `${BASE}/` — bez koncového lomítka by new URL() poslední segment zahodilo.
+const canonical = new URL(`${BASE}/`, Astro.site ?? site.url).href;
+const ogImage = new URL('og-image.png', canonical).href;
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -50,11 +63,17 @@ const jsonLd = {
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" sizes="32x32" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="preload" href="/fonts/ClashDisplay-Bold.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/Satoshi-Regular.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="icon" type="image/svg+xml" href={withBase('/favicon.svg')} />
+    <link rel="icon" href={withBase('/favicon.ico')} sizes="32x32" />
+    <link rel="apple-touch-icon" href={withBase('/apple-touch-icon.png')} />
+    {
+      fonts
+        .filter((f) => f.preload)
+        .map((f) => (
+          <link rel="preload" href={withBase(`/fonts/${f.file}`)} as="font" type="font/woff2" crossorigin />
+        ))
+    }
+    <style is:inline set:html={fontFaces}></style>
     <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   </head>
   <body>

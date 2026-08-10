@@ -77,7 +77,8 @@ Pokud si u nějakého úkolu nejsi jistý designovým nebo technickým detailem 
 
 - `src/components/*.astro` — markup + scoped CSS, **zero JS** ve statických sekcích
 - `src/scripts/*.js` — vanilla JS interakce, jeden soubor na interaktivní prvek, lazy-loaded jen když je prvek viditelný. `scroll-setup.js` inicializuje GSAP + Lenis a globální triggery.
-- `src/styles/tokens.css` — CSS custom properties; `global.css` reset + grain overlay; `fonts.css` @font-face
+- `src/styles/tokens.css` — CSS custom properties; `global.css` reset + grain overlay. `@font-face` deklarace **nejsou v CSS** — generuje je `Base.astro` ze seznamu v `src/data/fonts.js` (viz „Deploy a base path" níž)
+- `src/lib/base.js` — `withBase()` / `BASE`. **Každý odkaz na soubor z `public/`** (obrázky, fonty, favicony) musí projít přes `withBase('/images/…')`, ne root-absolutní string
 - `src/layouts/Base.astro` — HTML shell, meta, fonty, grain overlay
 
 Plná plánovaná struktura včetně názvů souborů je v Tech-stack (sekce „Struktura projektu").
