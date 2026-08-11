@@ -124,8 +124,12 @@ synth-eye-web/
 │   │   └── scroll-setup.js         # GSAP + Lenis init, globální scroll triggers
 │   ├── styles/
 │   │   ├── tokens.css              # CSS custom properties (barvy, typo, spacing)
-│   │   ├── global.css              # Reset, grain overlay, base styles
-│   │   └── fonts.css               # @font-face deklarace
+│   │   └── global.css              # Reset, grain overlay, base styles
+│   ├── lib/
+│   │   └── base.js                 # withBase() — base path pro Vercel / GitHub Pages
+│   ├── data/
+│   │   └── fonts.js                # Seznam fontů → @font-face + preload v Base.astro
+│   │                               #   (nahradilo styles/fonts.css, 2026-08-10)
 │   └── pages/
 │       └── index.astro             # Single page — skládá všechny sekce
 ├── public/

@@ -6,7 +6,7 @@ export const site = {
   url: 'https://synth-eye-web.vercel.app',
   locale: 'en',
   author: 'Roman Parak, Lukas Moravansky, Filip Rusnak',
-  organization: 'JIC · INTEMAC',
+  organization: 'JIC',
   license: 'MIT',
   repos: {
     blender: 'https://github.com/rparak/Synth_Eye',

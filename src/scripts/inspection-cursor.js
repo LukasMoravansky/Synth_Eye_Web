@@ -77,7 +77,9 @@ function init() {
   function buildSpec(el) {
     const objLabel = el.dataset.label;
     const objConf = el.dataset.confidence;
-    const tag = objLabel && objConf ? `${objLabel} ${objConf}%` : '';
+    // Confidence je nepovinná: Verification (PipelineBlender) záměrně žádná
+    // procenta netvrdí, ale třídu na hoveru ukázat musí → fallback na label.
+    const tag = objLabel ? (objConf ? `${objLabel} ${objConf}%` : objLabel) : '';
 
     const objGroups = parseGroups(el.dataset.box);
     const defectGroups = parseGroups(el.dataset.defects).sort((a, b) => b[2] * b[3] - a[2] * a[3]);

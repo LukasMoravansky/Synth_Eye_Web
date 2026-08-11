@@ -30,7 +30,7 @@ async function main() {
       <rect width="1200" height="630" fill="#08080c"/>
       <text x="80" y="200" font-family="system-ui,sans-serif" font-size="52" font-weight="700" fill="#e8e8ec">Train on synthetic.</text>
       <text x="80" y="270" font-family="system-ui,sans-serif" font-size="52" font-weight="700" fill="#7B6EF6">Deploy on real.</text>
-      <text x="80" y="560" font-family="monospace" font-size="18" fill="#8a8a96">Synth.Eye · MIT · JIC · INTEMAC</text>
+      <text x="80" y="560" font-family="monospace" font-size="18" fill="#8a8a96">Synth.Eye · MIT · JIC</text>
       <text x="80" y="80" font-family="monospace" font-size="14" fill="#4a4a56" opacity="0.5">⌜</text>
       <text x="1120" y="80" font-family="monospace" font-size="14" fill="#4a4a56" opacity="0.5">⌝</text>
       <text x="80" y="610" font-family="monospace" font-size="14" fill="#4a4a56" opacity="0.5">⌞</text>

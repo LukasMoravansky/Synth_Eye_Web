@@ -89,6 +89,32 @@ Plná plánovaná struktura včetně názvů souborů je v Tech-stack (sekce „
 
 ---
 
+## Deploy a base path
+
+Web se deployuje na **dva cíle** a to určuje, jak se píšou cesty k assetům:
+
+| cíl | URL | build |
+|---|---|---|
+| Vercel | `https://synth-eye-web.vercel.app/` | `npm run build` bez env — `base: '/'` |
+| GitHub Pages | `https://lukasmoravansky.github.io/Synth_Eye_Web/` | `.github/workflows/deploy.yml` nastaví `SITE_URL` + `BASE_PATH=/<repo>` |
+
+`astro.config.mjs` čte `SITE_URL` / `BASE_PATH` z prostředí, výchozí je root + Vercel doména.
+
+**Důsledek pro každý prompt, který sahá na assety:** root-absolutní cesta (`src="/images/x.png"`) se pod Pages rozbije — ukazuje mimo web. Vždycky `withBase()` ze `src/lib/base.js`:
+
+```astro
+---
+import { withBase } from '../lib/base.js';
+---
+<img src={withBase('/images/part-front.png')} />
+```
+
+Platí i v klientských skriptech (`src/scripts/*.js`) — Vite hodnotu `import.meta.env.BASE_URL` inlinuje do bundlu. Fonty proto nemají `fonts.css`: `url()` v CSS přes `withBase()` neprojde, takže `@font-face` generuje `Base.astro` ze seznamu v `src/data/fonts.js` a vkládá inline (odtud i preload linky).
+
+Kanonická URL a OG obrázek se odvozují z `Astro.site` + base, ne z `site.url`.
+
+---
+
 ## Design tokeny
 
 Kanonický seznam je v konceptu v2 (sekce „Design systém — tokeny"). Nejčastěji potřebné hodnoty pro prompty:
@@ -111,7 +137,7 @@ Fonty: **Clash Display** (headings, Fontshare) · **Satoshi / Outfit** (body, Fo
 
 **NESMÍ:** Inter/Roboto/Poppins/Open Sans/Montserrat jako hlavní font, stock fotky, gradient tlačítka, generic "AI brain/neural network" vizuály, Tailwind bez heavy customizace, symetrický centered layout všude, `border-radius: 8px` na všem, více než 2–3 fonty, plošný parallax, animace bez účelu, terminálový preloader (Sekce 0 byla z konceptu odstraněna).
 
-**Stack:** Astro (statický, zero-JS default) · vanilla JS + GSAP/ScrollTrigger · Lenis pro smooth scroll · Canvas 2D pro particle systém · custom SVG pro graf · Fontshare self-hosted fonty · AVIF→WebP→PNG chain přes `sharp` · hosting Vercel. **Žádný** React/Vue/Svelte, Tailwind, CMS, i18n, charting knihovna.
+**Stack:** Astro (statický, zero-JS default) · vanilla JS + GSAP/ScrollTrigger · Lenis pro smooth scroll · Canvas 2D pro particle systém · custom SVG pro graf · Fontshare self-hosted fonty · AVIF→WebP→PNG chain přes `sharp` · hosting Vercel + GitHub Pages (viz „Deploy a base path"). **Žádný** React/Vue/Svelte, Tailwind, CMS, i18n, charting knihovna.
 
 **Mobilní degradace:** particle physics vypnuté na touch zařízeních (CSS crossfade fallback), inspection cursor jako tap-to-inspect místo continuous tracking.
 

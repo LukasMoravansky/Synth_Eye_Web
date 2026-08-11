@@ -71,7 +71,7 @@ status `DONE` a build (`npm run build`) prochází bez chyb. Integrace a merge j
 
 | ID | Úkol | Vlna | Vlastní soubory | Prompt |
 |---|---|---|---|---|
-| A0 | Foundation & scaffold | 0 | scaffold, `tokens.css`, `global.css`, `fonts.css`, `Base.astro`, `Nav.astro`, `index.astro`, `scroll-setup.js`, `scripts/lib/*`, asset pipeline | [A0](agents/A0-foundation.md) |
+| A0 | Foundation & scaffold | 0 | scaffold, `tokens.css`, `global.css`, `fonts.css` (dnes `data/fonts.js`), `Base.astro`, `Nav.astro`, `index.astro`, `scroll-setup.js`, `scripts/lib/*`, asset pipeline | [A0](agents/A0-foundation.md) |
 | A1 | Hero — Inspection Chamber | 1 | `Hero.astro`, `hero-chamber.js` | [A1](agents/A1-hero.md) |
 | A2 | GUI Demo | 1 | `GuiDemo.astro`, `gui-demo.js`, `data/gui-demo-frames.js` | [A2](agents/A2-gui-demo.md) |
 | A3 | The Data Gap | 1 | `DataGap.astro`, `data-gap.js` | [A3](agents/A3-data-gap.md) |

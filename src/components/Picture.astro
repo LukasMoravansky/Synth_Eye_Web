@@ -60,7 +60,7 @@ const placeholder = lqip[slug as keyof typeof lqip] ?? '';
 // ne jen klasifikaci objektu. Nálezy se k `alt` PŘIDÁVAJÍ: aria-label alt
 // přebíjí, takže samotné detekce by popis snímku zahodily.
 const detections = [
-  label != null && confidence != null ? `${label}, confidence ${confidence}%` : '',
+  label != null ? (confidence != null ? `${label}, confidence ${confidence}%` : label) : '',
   defects && defectLabel != null && defectConfidence != null
     ? `${defects.split(';').length} defect ${defects.split(';').length === 1 ? 'detection' : 'detections'}: ${defectLabel}, confidence ${defectConfidence}%`
     : '',

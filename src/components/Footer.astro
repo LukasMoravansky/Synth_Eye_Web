@@ -1,10 +1,13 @@
 ---
 /* Footer — team + institutions */
 import { withBase } from '../lib/base.js';
+/* LinkedIn URL s diakritikou v slugu MUSÍ být percent-encoded — nekódované
+   `á`/`š`/`ý` v href projde v prohlížeči, ale rozbije se při kopírování a v HTML
+   validaci. Lukáš = luk%C3%A1%C5%A1-moravansk%C3%BD, Filip = filip-rusn%C3%A1k. */
 const contributors = [
-  { initials: 'RP', name: 'Roman Parak' },
-  { initials: 'LM', name: 'Lukas Moravansky' },
-  { initials: 'FR', name: 'Filip Rusnak' },
+  { initials: 'RP', name: 'Roman Parak', url: 'https://www.linkedin.com/in/roman-parak/' },
+  { initials: 'LM', name: 'Lukas Moravansky', url: 'https://www.linkedin.com/in/luk%C3%A1%C5%A1-moravansk%C3%BD-6102ba1b0' },
+  { initials: 'FR', name: 'Filip Rusnak', url: 'https://www.linkedin.com/in/filip-rusn%C3%A1k-93b789325/' },
 ];
 ---
 
@@ -21,8 +24,13 @@ const contributors = [
       <ul class="footer__people">
         {contributors.map((c) => (
           <li>
-            <span class="footer__avatar mono" aria-hidden="true">{c.initials}</span>
-            <span>{c.name}</span>
+            {/* Celý řádek je terč, ne jen jméno — avatar 44px je největší část
+                odkazu a klik na něj musí fungovat stejně jako na text. */}
+            <a href={c.url} target="_blank" rel="noopener noreferrer">
+              <span class="footer__avatar mono" aria-hidden="true">{c.initials}</span>
+              <span>{c.name}</span>
+              <span class="sr-only"> — LinkedIn (opens in new tab)</span>
+            </a>
           </li>
         ))}
       </ul>
@@ -39,7 +47,6 @@ const contributors = [
 
     <div class="footer__col">
       <h2 class="footer__heading mono">Institution</h2>
-      <p class="footer__institution">INTEMAC</p>
       <p class="footer__institution"><a href="https://www.jic.cz/en/" target="_blank" rel="noopener noreferrer">JIC<span class="sr-only"> (opens in new tab)</span></a></p>
       <span class="footer__badge mono">MIT</span>
     </div>
@@ -62,7 +69,13 @@ const contributors = [
   .footer__copy { font-size: 11px; color: var(--text-muted); }
   .footer__heading { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: var(--space-4); }
   .footer__people { list-style: none; }
-  .footer__people li { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); color: var(--text-secondary); }
+  .footer__people li { margin-bottom: var(--space-3); }
+  .footer__people a {
+    display: flex; align-items: center; gap: var(--space-3);
+    color: var(--text-secondary);
+    transition: color 0.2s;
+  }
+  .footer__people a:hover { color: var(--text-primary); }
   .footer__avatar {
     width: 44px; height: 44px; border-radius: 50%;
     background: var(--bg-surface); border: 1px solid var(--border);
@@ -70,7 +83,8 @@ const contributors = [
     font-size: 12px; color: var(--text-secondary);
     transition: border-color 0.2s, color 0.2s;
   }
-  .footer__people li:hover .footer__avatar { border-color: var(--border-hover); color: var(--accent); }
+  .footer__people a:hover .footer__avatar,
+  .footer__people a:focus-visible .footer__avatar { border-color: var(--border-hover); color: var(--accent); }
   .footer__links { list-style: none; font-size: 12px; }
   .footer__links a { color: var(--text-secondary); }
   .footer__institution { font-family: var(--font-display); color: var(--text-secondary); margin-bottom: var(--space-2); }

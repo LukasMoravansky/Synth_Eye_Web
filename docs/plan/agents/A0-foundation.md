@@ -60,6 +60,12 @@ tranzice `--ease-out: cubic-bezier(.16,1,.3,1)`, `--dur-fast: 180ms`, `--dur-bas
 
 ### 3. `src/styles/fonts.css`
 
+> **Neaktuální (2026-08-10):** `fonts.css` byl při zprovoznění GitHub Pages odstraněn.
+> `url()` v CSS neumí projít přes `withBase()`, a pod Pages web běží na `/<repo>/`, ne
+> v rootu. `@font-face` se teď generuje v `Base.astro` ze seznamu v `src/data/fonts.js`
+> a vkládá inline; odtud se berou i preload linky. Zbytek sekce (které váhy, `font-display`,
+> `unicode-range`, zákaz Google Fonts) platí beze změny.
+
 `@font-face` deklarace pro self-hosted fonty. **Žádné Google Fonts, žádné CDN.**
 - **Clash Display** (headings) a **Satoshi** (body) — Fontshare, free, self-hostable
 - **JetBrains Mono** (data/logger/metriky) — open source
@@ -94,6 +100,11 @@ HTML shell: `lang="en"`, charset, viewport, základní meta (title, description 
 import `fonts.css` → `tokens.css` → `global.css` v tomto pořadí, preload kritických fontů
 (Clash Display 700, Satoshi 400), grain overlay div, `<slot />`, a script tag inicializující
 `scroll-setup.js`.
+
+> **Neaktuální (2026-08-10):** `fonts.css` se neimportuje — `Base.astro` staví `@font-face`
+> i preload linky ze `src/data/fonts.js` (viz poznámka u bodu 3). Cesty k souborům
+> z `public/` (favicony, fonty) jdou přes `withBase()` ze `src/lib/base.js`, canonical
+> a OG URL z `Astro.site` + base.
 
 ### 6. Asset pipeline
 

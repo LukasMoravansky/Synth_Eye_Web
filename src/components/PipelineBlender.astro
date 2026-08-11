@@ -122,8 +122,12 @@ const DEFECT_COUNT = 6;
    Dřív to byl kvíz („hádej, který je render"). Nefunkční: každý snímek je jiný
    vzorek — reálná kontaminace je na horní ploše, procedurální na dolní — takže
    divák nepoznával render, poznával „jinou fotku". Důkaz tvrzení nad prvkem
-   („indistinguishable from reality") proto nenese oko diváka, ale shodné skóre
-   detektoru vypsané pod oběma snímky.
+   („indistinguishable from reality") proto nenese oko diváka, ale shodná
+   klasifikace detektoru vypsaná pod oběma snímky.
+
+   Konkrétní confidence procenta tu ZÁMĚRNĚ nejsou (dřív 99.02 / 98.94):
+   nebyla podložená reálnou inferencí nad těmito dvěma snímky. Tvrzení „detektor
+   je klasifikuje stejně" nese shodná třída, ne vymyšlené číslo na dvě desetiny.
 
    Ze stejného důvodu je nelze překrývat: wipe mezi dvěma neregistrovanými
    vzorky se čte jako chyba registrace, ne jako přechod render → realita.
@@ -140,10 +144,8 @@ const DEFECT_COUNT = 6;
    tady jsou DVA samostatné kádry s bridgem mezi nimi; 02 mluví o povrchu,
    tady o detektoru; 02 nemá inspection overlay, tady je na obou kádrech. */
 
-// TODO: reálné hodnoty z inference nad real_before.png / render_after.png.
 // Jeden zdroj pravdy pro statický readout i hover overlay — nesmí se rozejít.
 const DETECTION_CLASS = 'Cls_Obj_Front_Side';
-const CONFIDENCE = { real: 99.02, synthetic: 98.94 };
 
 const CARDS = [
   {
@@ -151,7 +153,6 @@ const CARDS = [
     kind: 'real',
     title: 'Real capture',
     meta: 'Basler acA1920-40uc · 16 mm · f/4.0',
-    confidence: CONFIDENCE.real,
     alt: 'Machined metal part with fingerprint contamination on the upper face, seen from the inspection camera angle',
   },
   {
@@ -159,7 +160,6 @@ const CARDS = [
     kind: 'synthetic',
     title: 'Blender render',
     meta: 'Cycles · 512 spp · procedural fingerprint',
-    confidence: CONFIDENCE.synthetic,
     alt: 'Machined metal part with fingerprint contamination on the lower face, seen from the inspection camera angle',
   },
 ];
@@ -331,7 +331,7 @@ const SHARED = ['same lens', 'same lighting', 'same material', 'same crop'];
 
         <div class="ab" data-blender-bridge>
           <ol class="ab-pair">
-            {CARDS.map(({ slug, kind, title, meta, confidence, alt }) => (
+            {CARDS.map(({ slug, kind, title, meta, alt }) => (
               <li class:list={['ab-card', `ab-card--${kind}`]} data-reveal>
                 <div class="ab-card__frame viewfinder">
                   <Picture
@@ -340,18 +340,15 @@ const SHARED = ['same lens', 'same lighting', 'same material', 'same crop'];
                     loading="lazy"
                     inspectable
                     label={DETECTION_CLASS}
-                    confidence={confidence}
                   />
                   <p class="ab-card__origin mono">
                     <b>{title}</b><span>{meta}</span>
                   </p>
                 </div>
-                {/* Skóre staticky, ne jen v hover overlayi: caption tvrdí, že detektor
-                    oba snímky skóruje stejně — to musí být vidět bez interakce.
+                {/* Třída staticky, ne jen v hover overlayi: caption tvrdí, že detektor
+                    oba snímky klasifikuje stejně — to musí být vidět bez interakce.
                     Pro odečítač je to duplikát (je v aria-label snímku), proto skryté. */}
-                <p class="ab-card__score mono" aria-hidden="true">
-                  <span>{DETECTION_CLASS}</span><b>{confidence.toFixed(2)}%</b>
-                </p>
+                <p class="ab-card__score mono" aria-hidden="true">{DETECTION_CLASS}</p>
               </li>
             ))}
 
@@ -369,7 +366,7 @@ const SHARED = ['same lens', 'same lighting', 'same material', 'same crop'];
 
           <p class="ab-caption mono" data-reveal>
             Left: inspection camera. Right: Blender. Same lens, same lighting, same material —
-            and the detector scores them the same.
+            and the detector assigns them the same class.
           </p>
         </div>
       </li>
@@ -752,24 +749,16 @@ const SHARED = ['same lens', 'same lighting', 'same material', 'same crop'];
      rozdíl mezi oběma stranami. */
   .ab-card--synthetic .ab-card__origin b { color: var(--accent-light); }
 
-  /* Readout drží formát hover chipu z inspection-cursor.js (`label conf%`) —
-     dvě čtení téhož čísla se nesmí lišit sazbou. */
+  /* Readout drží formát hover chipu z inspection-cursor.js (bez confidence tedy
+     jen `label`) — dvě čtení téže třídy se nesmí lišit sazbou. */
   .ab-card__score {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--space-3);
     margin: var(--space-3) 0 0;
     font-size: 10px;
     letter-spacing: 0.1em;
     color: var(--text-muted);
+    overflow-wrap: anywhere;
   }
-  .ab-card__score b {
-    font-weight: 400;
-    font-variant-numeric: tabular-nums;
-    color: var(--text-secondary);
-  }
-  .ab-card--synthetic .ab-card__score b { color: var(--accent-light); }
+  .ab-card--synthetic .ab-card__score { color: var(--text-secondary); }
 
   /* ── Spec bridge ─────────────────────────────────────────────────────────
      Vertikální linka mezi kádry se seznamem toho, co je shodné. Tvrdí „jedna
@@ -854,6 +843,5 @@ const SHARED = ['same lens', 'same lighting', 'same material', 'same crop'];
     .ab-pair { grid-template-columns: 1fr 1fr; gap: var(--space-3); }
     .ab-bridge { display: none; }
     .ab-card__origin { padding: 4px 6px; font-size: 9px; }
-    .ab-card__score { flex-direction: column; gap: 2px; }
   }
 </style>

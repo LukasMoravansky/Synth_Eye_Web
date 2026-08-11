@@ -36,7 +36,8 @@ v průmyslové vizuální inspekci. Tmavé téma, fialový accent, monospace pro
 - Žádný `border-radius: 8px` plošně na všem — viz MUSÍ/NESMÍ pravidla v konceptu (žádný generic
   rounded-corner look).
 - Fonty: Clash Display (headings), Satoshi/Outfit (body), JetBrains Mono (data/metriky/timestampy,
-  `tabular-nums`). Self-hosted z `src/styles/fonts.css`. Nikdy Inter/Roboto/Poppins/Open
+  `tabular-nums`). Self-hosted, `@font-face` generuje `Base.astro` ze `src/data/fonts.js`
+  (ne z CSS — cesty musí projít přes `withBase()`). Nikdy Inter/Roboto/Poppins/Open
   Sans/Montserrat jako primární font.
 
 ## JS pravidla
