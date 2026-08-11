@@ -372,6 +372,16 @@ import { withBase } from '../lib/base.js';
     }
   }
 
+  @media (max-width: 359px) {
+    .latent-nav__panel {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .latent-nav__readout dd {
+      white-space: normal;
+    }
+  }
+
   /* Short phones — trade viewer size for a block that still fits one screen. */
   @media (max-width: 799px) and (max-height: 700px) {
     .latent-nav {

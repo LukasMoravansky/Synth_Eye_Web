@@ -668,7 +668,7 @@ const TRADEOFF = [
     /* Triptych se na tabletu láme na 1 + 2: front.pkl je nosič kompozitu,
        takže dostane plnou šířku a čte se jako výchozí bod dvou drah. */
     .gens {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     }
     .gen:first-child {
       grid-column: 1 / -1;
@@ -696,7 +696,7 @@ const TRADEOFF = [
       margin-inline-start: var(--space-6);
     }
     .gens {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
     .gen:first-child .gen__grid,
     .gen .gen__grid {
@@ -722,6 +722,16 @@ const TRADEOFF = [
     }
     .tradeoff__val--now {
       padding-inline-start: var(--space-3);
+    }
+  }
+
+  @media (max-width: 359px) {
+    .gen__head {
+      flex-wrap: wrap;
+    }
+
+    .gen__lane {
+      white-space: normal;
     }
   }
 
