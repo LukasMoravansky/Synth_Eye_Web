@@ -44,7 +44,7 @@ pipeline — PBR rendering, procedurální defekty). Přečti si ho pro věcnou 
   jemný `--border`, a k jednotlivým částem schématu přidej **monospace anotace** v `--text-muted`
   s tenkými vodicími linkami (`--border-hover`):
   ```
-  camera      Basler acA1920-40uc
+  camera      Basler a2A1920-51gcPRO
   lens        16 mm  ·  f/4.0
   lighting    diffuse dome  +  directional
   material    PBR  ·  brushed aluminium

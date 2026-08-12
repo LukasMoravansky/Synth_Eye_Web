@@ -167,7 +167,7 @@ takže „kroky jednoho argumentu" tvrdí layout, ne caption.
 │ │ 01  VIRTUALIZATION                                                       │
 │ │     The chamber exists twice.                                            │
 │ │     ┌──────────────────┐   ┌──────────────────┐                          │
-│ │     │ stand-real       │   │ scene-twin       │   camera   Basler acA…   │
+│ │     │ stand-real       │   │ scene-twin       │   camera   Basler a2A…   │
 │ │     │ (foto standu)    │   │ (Blender)        │   lens     16 mm · f/4.0 │
 │ │     │                  │   │                  │   lighting diffuse dome  │
 │ │     └──────────────────┘   └──────────────────┘   frame    30×30 extr.   │

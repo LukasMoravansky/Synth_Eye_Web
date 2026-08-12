@@ -598,7 +598,7 @@ export default function init(root) {
       btnConnect.textContent = 'DISCONNECT';
       logSequence([
         'Connect button pressed. Initializing camera interface.',
-        'Camera Basler acA1920-40uc connected. Resolution 1920x1200, RGB format.',
+        'Camera Basler a2A1920-51gcPRO connected. Resolution 1920x1200, RGB format.',
         'Camera stream is live. Ready to capture.',
       ]);
       if (lastUpdate) lastUpdate.textContent = ts();
